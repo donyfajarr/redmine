@@ -112,26 +112,7 @@ def confirmation (request, name):
             col3_values = []
             col4_values = []
             taskx = []
-            # def get_date_range_for_week(year, week_start, week_end):
-            #     first_day = datetime(year, 1, 1)
-            #     def calculate_week_dates(week_number):
-            #         offset = (week_number -1)  * 7
-            #         start_date = first_day + timedelta(days=offset)
-            #         end_date = start_date + timedelta(days=4)
-            #         return start_date, end_date
-            #     if week_end is None:
-            #         start_date, end_date = calculate_week_dates(week_start)
-            #         print(start_date)
-            #         print(end_date)
-            #         return [(start_date, end_date)]
-            #     else:
-            #         start_date, end_date= calculate_week_dates(week_start)
-            #         # end_date = calculate_week_dates(week_end)
-            #         # print(start_date[0])
-            #         # print(end_date[1])
-            #         return [(start_date, end_date)] + [calculate_week_dates(week) for week in range(week_start + 1, week_end + 1)]
-            #         # return [start_date[0], end_date[1]]
-                    
+
             def get_date_range_for_week(year, week_start, week_end):
                 if week_start is None or week_start < 1:
                     return []
@@ -157,10 +138,11 @@ def confirmation (request, name):
                 filled_cells = []
                 for col_index in range(9, ws.max_column + 1):
                     cell = ws.cell(row=row_index, column=col_index)
-                    if isinstance(cell.fill.fgColor.theme, int):
+                    
+                    if isinstance(cell.fill.fgColor.theme, int) or (cell.fill.fgColor.rgb != 'FFFF0000' and  cell.fill.fgColor.rgb !='00000000'):
                         findweek = ws.cell(4, col_index).value
-                        
                         filled_cells.append(findweek)
+
                 return filled_cells if filled_cells else None
             
             for row_idx, (cell_value,) in enumerate(ws.iter_rows(min_row=start_row, min_col=3, max_col=3, values_only=True), start=start_row):
@@ -190,8 +172,7 @@ def confirmation (request, name):
                         week_start = None
                         week_end = None
                     get_ranges = get_date_range_for_week(2024, week_start, week_end)
-                    # print(get_ranges)
-                    # start_date, end_date = get_ranges
+         
                     for start_date, end_date in get_ranges:
                         start_date = start_date.strftime('%Y-%m-%d')
                         end_date = end_date.strftime('%Y-%m-%d')
@@ -220,8 +201,7 @@ def confirmation (request, name):
                             week_start = None
                             week_end = None
                         get_ranges =  get_date_range_for_week(2024, week_start, week_end)
-                        # print(get_ranges[0])
-                        # start_date, end_date = get_ranges[0]
+
                         for start_date, end_date in get_ranges:
                             start_date = start_date.strftime('%Y-%m-%d')
                             end_date = end_date.strftime('%Y-%m-%d')
