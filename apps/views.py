@@ -160,7 +160,7 @@ def confirmation (request, name):
                 if value is not None:
                     taskx.append(col3_idx[value])
                     p = find_col_with_filled_color(ws,col3_idx[value])
-                    print(p)
+       
                     if p is not None:
                         if len(p)>1:
                             week_start = min(p)
@@ -176,8 +176,7 @@ def confirmation (request, name):
                     for start_date, end_date in get_ranges:
                         start_date = start_date.strftime('%Y-%m-%d')
                         end_date = end_date.strftime('%Y-%m-%d')
-                    print(start_date)
-                    print(end_date)
+              
                     findpic = ws.cell(col3_idx[value], 8).value
                     if findpic is not None:
                         findpic = findpic.upper()
@@ -188,10 +187,10 @@ def confirmation (request, name):
                     subtask_value = col4_values[idx] if idx < len(col4_values) else None
                     if subtask_value is not None:
                         p = find_col_with_filled_color(ws,idx+start_row)
-                        print(p)
+                    
                         if p is not None:
                             if len(p)>1:
-                                print(max(p))
+                               
                                 week_start = min(p)
                                 week_end = max(p)
                             else:
@@ -205,8 +204,7 @@ def confirmation (request, name):
                         for start_date, end_date in get_ranges:
                             start_date = start_date.strftime('%Y-%m-%d')
                             end_date = end_date.strftime('%Y-%m-%d')
-                        print(start_date)
-                        print(end_date)
+                     
                         findpic = ws.cell(idx+start_row, 8).value
                         if findpic is not None:
                             findpic = findpic.upper()
