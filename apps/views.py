@@ -112,19 +112,47 @@ def confirmation (request, name):
             col3_values = []
             col4_values = []
             taskx = []
+            # def get_date_range_for_week(year, week_start, week_end):
+            #     first_day = datetime(year, 1, 1)
+            #     def calculate_week_dates(week_number):
+            #         offset = (week_number -1)  * 7
+            #         start_date = first_day + timedelta(days=offset)
+            #         end_date = start_date + timedelta(days=4)
+            #         return start_date, end_date
+            #     if week_end is None:
+            #         start_date, end_date = calculate_week_dates(week_start)
+            #         print(start_date)
+            #         print(end_date)
+            #         return [(start_date, end_date)]
+            #     else:
+            #         start_date, end_date= calculate_week_dates(week_start)
+            #         # end_date = calculate_week_dates(week_end)
+            #         # print(start_date[0])
+            #         # print(end_date[1])
+            #         return [(start_date, end_date)] + [calculate_week_dates(week) for week in range(week_start + 1, week_end + 1)]
+            #         # return [start_date[0], end_date[1]]
+                    
             def get_date_range_for_week(year, week_start, week_end):
+                if week_start is None or week_start < 1:
+                    return []
+
                 first_day = datetime(year, 1, 1)
+                
                 def calculate_week_dates(week_number):
-                    offset = (week_number - 1) * 7 - first_day.weekday() + 1
+                    offset = (week_number - 1) * 7
                     start_date = first_day + timedelta(days=offset)
-                    end_date = start_date + timedelta(days=6)
+                    end_date = start_date + timedelta(days=4)
                     return start_date, end_date
+
                 if week_end is None:
                     start_date, end_date = calculate_week_dates(week_start)
+                    return [(start_date, end_date)]  # Return a list containing a single tuple
+                elif week_start is not None and week_end is not None and week_end >= week_start:
+                    start_date = calculate_week_dates(week_start)[0]
+                    end_date = calculate_week_dates(week_end)[1]
                     return [(start_date, end_date)]
                 else:
-                    return [calculate_week_dates(week) for week in range(week_start, week_end + 1)]
-        
+                    return []
             def find_col_with_filled_color(ws, row_index):
                 filled_cells = []
                 for col_index in range(9, ws.max_column + 1):
@@ -150,15 +178,25 @@ def confirmation (request, name):
                 if value is not None:
                     taskx.append(col3_idx[value])
                     p = find_col_with_filled_color(ws,col3_idx[value])
-                    if p:
-                        week_start = min(p)
-                        week_end = max(p)
-                    date_ranges = get_date_range_for_week(2024, week_start, week_end)
-                    date_ranges = get_date_range_for_week(2024, week_start, week_end)
-                    for i, (start_date, end_date) in enumerate(date_ranges, start=1):
-                        pass
-                    start_date = datetime.strftime(start_date, '%Y-%m-%d')
-                    end_date = datetime.strftime(end_date, '%Y-%m-%d')
+                    print(p)
+                    if p is not None:
+                        if len(p)>1:
+                            week_start = min(p)
+                            week_end = max(p)
+                        else:
+                            week_start = min(p)
+                            week_end = None
+                    else:
+                        week_start = None
+                        week_end = None
+                    get_ranges = get_date_range_for_week(2024, week_start, week_end)
+                    # print(get_ranges)
+                    # start_date, end_date = get_ranges
+                    for start_date, end_date in get_ranges:
+                        start_date = start_date.strftime('%Y-%m-%d')
+                        end_date = end_date.strftime('%Y-%m-%d')
+                    print(start_date)
+                    print(end_date)
                     findpic = ws.cell(col3_idx[value], 8).value
                     if findpic is not None:
                         findpic = findpic.upper()
@@ -169,14 +207,26 @@ def confirmation (request, name):
                     subtask_value = col4_values[idx] if idx < len(col4_values) else None
                     if subtask_value is not None:
                         p = find_col_with_filled_color(ws,idx+start_row)
-                        if p:
-                            week_start = min(p)
-                            week_end = max(p)
-                        date_ranges = get_date_range_for_week(2024, week_start, week_end)
-                        for i, (start_date, end_date) in enumerate(date_ranges, start=1):
-                            pass
-                        start_date = datetime.strftime(start_date, '%Y-%m-%d')
-                        end_date = datetime.strftime(end_date, '%Y-%m-%d')
+                        print(p)
+                        if p is not None:
+                            if len(p)>1:
+                                print(max(p))
+                                week_start = min(p)
+                                week_end = max(p)
+                            else:
+                                week_start = min(p)
+                                week_end = None
+                        else:
+                            week_start = None
+                            week_end = None
+                        get_ranges =  get_date_range_for_week(2024, week_start, week_end)
+                        # print(get_ranges[0])
+                        # start_date, end_date = get_ranges[0]
+                        for start_date, end_date in get_ranges:
+                            start_date = start_date.strftime('%Y-%m-%d')
+                            end_date = end_date.strftime('%Y-%m-%d')
+                        print(start_date)
+                        print(end_date)
                         findpic = ws.cell(idx+start_row, 8).value
                         if findpic is not None:
                             findpic = findpic.upper()
