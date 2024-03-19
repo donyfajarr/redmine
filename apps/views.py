@@ -86,13 +86,11 @@ def newproject(request):
         new.name = request.POST['name']
         new.identifier = request.POST['name']
         new.description = request.POST['description']
-        new.is_public = request.POST['is_public']
-      
+        new.is_public = eval(request.POST['is_public'])
         if request.POST['parent'] == "kosong":
             pass
-         
         else:
-            new.parent = request.POST['parent']
+            new.parent_id = request.POST['parent']
         new.save()
         return redirect ('confirmation', name=request.POST['name'])
 def confirmation (request, name):
@@ -222,14 +220,14 @@ def confirmation (request, name):
                 else:
         
                     forprint.append(item)
-           
+            user = redmine.user.get('current')
             request.session['forprint'] = forprint
             request.session['name'] = name
-      
             return render (request, 'confirmation.html', {
                 'name' : name,
                 'tasks_data' : forprint,
                 'alluser' : alluser,
+                'user' : user,
                 'allstatus' : allstatus,
                 'alldept' : alldept,
                 'allpriority' : allpriority
@@ -239,7 +237,6 @@ def confirmation (request, name):
             name = request.session.get('name',[])
 
             for item in forprint:
-                
                 id = name
                 form_name = f'name_{item['name']}'
                 form_description = f'description_{item['name']}'
@@ -267,7 +264,7 @@ def confirmation (request, name):
                 create.project_id = id
                 create.subject=subject
                 create.description = description
-                create.assigned_to = assigned_to
+                create.assigned_to_id = assigned_to
                 create.start_date=start_date
                 create.due_date=due_date
                 create.status=status
@@ -324,6 +321,14 @@ def listissue(request,id):
 def listdetails(request,id):
     get = redmine.issue.get(id)
     
+    # INI NAMBAH RELATED ISSUE
+
+    # target = redmine.issue_relation.new()
+    # target.issue_id = id
+    # target.issue_to_id = 11122
+    # target.relation_type = 'precedes'
+    # target.save()
+
     dict = {}
     listresponsible = []
     listdepartment = []
@@ -375,7 +380,7 @@ def listdetails(request,id):
         'dict' : dict
     })
 def newissue(request):
-    
+    user = redmine.user.get('current')
     alldept = models.dept.objects.all()
     allstatus = models.status.objects.all()
     allpriority = models.priority.objects.all()
@@ -389,6 +394,7 @@ def newissue(request):
     if request.method == "GET":
         return render(request, 'newissue.html',{
             'all' : all,
+            'user' : user,
             'listproject' : listproject,
             'allstatus' : allstatus,
             'alldept' : alldept,
@@ -405,12 +411,9 @@ def newissue(request):
         p = request.POST['status']
         getstatus = models.status.objects.get(id=p)
         new.status_id = getstatus.id
-
         pri = request.POST['priority']
         getpriority = models.priority.objects.get(id=pri)
         new.priority_id = getpriority.id
-
-        
         new.assigned_to_id = request.POST['assigned_to']
         responsible = request.POST.getlist('responsible[]')
         department = request.POST.getlist('department[]')
@@ -419,8 +422,9 @@ def newissue(request):
         new.estimated_hours = request.POST['estimated_hours']
         new.start_date = request.POST['start_date']
         new.due_date = request.POST['due_date']
-        # new.parent_issue = request.POST['parent_issue']
+        # new.parent_issue_id = request.POST['parent']
         new.done_ratio = request.POST['done_ratio']
+        print('jalan')
         new.save()
         return redirect('listproject')
 def updateissue(request,id):
