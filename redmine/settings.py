@@ -71,7 +71,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'redmine.wsgi.application'
 
-
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10240
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 

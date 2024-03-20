@@ -175,7 +175,7 @@
                       <h5 class="mb-0">Create Project</h5>
                     </div>
                     <div class="card-body">
-                      <form method="post">
+                      <form method="post" onsubmit="return validateForm()">
                         {% csrf_token %}
                         <div class="row mb-3">
                           <label class="col-sm-2 col-form-label" for="basic-default-name">Project Name</label>
@@ -186,7 +186,7 @@
                         <div class="row mb-3">
                             <label class="col-sm-2 col-form-label" for="exampleFormControlTextarea1">Description</label>
                             <div class="col-sm-10">
-                              <textarea name="description" class="form-control" id="exampleFormControlTextarea1" rows="3" placeholder="Project Description"> </textarea>
+                              <textarea name="description" class="form-control" id="exampleFormControlTextarea1" rows="3" placeholder="Project Description"></textarea>
                             </div>
                         </div>
                         <div class="row mb-3">
@@ -219,7 +219,19 @@
                     </div>
                   </div>
                 </div>
-               
+                <script>
+                  function validateForm() {
+                      var inputString = document.getElementsByName("name")[0].value;
+                      // Regular expression to match only alphabets and numbers
+                      var regex = /^[a-zA-Z0-9]+$/;
+                      // Check if input string contains invalid characters
+                      if (!regex.test(inputString)) {
+                          alert("Nama project hanya dapat menggunakan alfabet, spasi, dan angka.");
+                          return false; // Prevent form submission
+                      }
+                      return true; // Allow form submission
+                  }
+                  </script>
                    
             <!-- / Content -->
 

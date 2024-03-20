@@ -4,7 +4,7 @@ import ssl
 from openpyxl import load_workbook
 from datetime import datetime, timedelta
 from . import models
-
+import time
 
 ssl._create_default_https_context = ssl._create_unverified_context
 key = "a435e1173a8238a1fb5fd6d07bc8042c901abbfd"
@@ -84,7 +84,11 @@ def newproject(request):
         })
     elif request.method == "POST":
         new.name = request.POST['name']
-        new.identifier = request.POST['name']
+        if " " in request.POST['name']:
+            name = request.POST['name'].replace(" ", "")
+            new.identifier = name
+        else:
+            new.identifier = request.POST['name']
         new.description = request.POST['description']
         new.is_public = eval(request.POST['is_public'])
         if request.POST['parent'] == "kosong":
@@ -106,23 +110,25 @@ def confirmation (request, name):
             wb = load_workbook(files)
             ws = wb.active
             start_row = 5
-            col3_idx = {}
+            # jadi input di htmlnya
+            # col3_idx = {}
             col3_values = []
             col4_values = []
+            col2_values = []
+            col2_idx  = {}
+            col5_values = []
+            col6_values = []
             taskx = []
 
             def get_date_range_for_week(year, week_start, week_end):
                 if week_start is None or week_start < 1:
                     return []
-
                 first_day = datetime(year, 1, 1)
-                
                 def calculate_week_dates(week_number):
                     offset = (week_number - 1) * 7
                     start_date = first_day + timedelta(days=offset)
                     end_date = start_date + timedelta(days=4)
                     return start_date, end_date
-
                 if week_end is None:
                     start_date, end_date = calculate_week_dates(week_start)
                     return [(start_date, end_date)]  # Return a list containing a single tuple
@@ -143,22 +149,37 @@ def confirmation (request, name):
 
                 return filled_cells if filled_cells else None
             
-            for row_idx, (cell_value,) in enumerate(ws.iter_rows(min_row=start_row, min_col=3, max_col=3, values_only=True), start=start_row):
+            for row_idx, (cell_value) in enumerate(ws.iter_rows(min_row=start_row,min_col=2,max_col=2, values_only=True), start=start_row):
+                col2_values.append(cell_value)
+                col2_idx[cell_value] = row_idx
+            for row in ws.iter_rows(min_row=start_row, min_col=3, max_col=3, values_only=True):
+                cell_value = row[0] if row and row[0] is not None else None
                 col3_values.append(cell_value)
-                col3_idx[cell_value] = row_idx
+            # for row_idx, (cell_value,) in enumerate(ws.iter_rows(min_row=start_row, min_col=3, max_col=3, values_only=True), start=start_row):
+            #     col3_values.append(cell_value)
+            #     col3_idx[cell_value] = row_idx
             for row in ws.iter_rows(min_row=start_row, min_col=4, max_col=4, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
                 col4_values.append(cell_value)
+            for row in ws.iter_rows(min_row=start_row, min_col=5, max_col=5, values_only=True):
+                cell_value = row[0] if row and row[0] is not None else None
+                col5_values.append(cell_value)
+            for row in ws.iter_rows(min_row=start_row, min_col=6, max_col=6, values_only=True):
+                cell_value = row[0] if row and row[0] is not None else None
+                col6_values.append(cell_value)
             
             
             tasks_data = []
             current_task = None
             temp = []
-            for idx, value in enumerate(col3_values):
-                if value is not None:
-                    taskx.append(col3_idx[value])
-                    p = find_col_with_filled_color(ws,col3_idx[value])
-       
+            temp2 = []
+            temp3 = []
+            temp4 = []
+            for idx, value in enumerate(col2_values):
+                if value[0] is not None:
+    
+                    taskx.append(col2_idx[value])
+                    p = find_col_with_filled_color(ws,col2_idx[value])
                     if p is not None:
                         if len(p)>1:
                             week_start = min(p)
@@ -166,29 +187,33 @@ def confirmation (request, name):
                         else:
                             week_start = min(p)
                             week_end = None
+                        
+                        get_ranges = get_date_range_for_week(2024, week_start, week_end)
+                        for start_date, end_date in get_ranges:
+                            start_date = start_date.strftime('%Y-%m-%d')
+                            end_date = end_date.strftime('%Y-%m-%d')
                     else:
                         week_start = None
                         week_end = None
-                    get_ranges = get_date_range_for_week(2024, week_start, week_end)
-         
-                    for start_date, end_date in get_ranges:
-                        start_date = start_date.strftime('%Y-%m-%d')
-                        end_date = end_date.strftime('%Y-%m-%d')
-              
-                    findpic = ws.cell(col3_idx[value], 8).value
+                        start_date = week_start
+                        end_date = week_end
+
+                    findpic = ws.cell(col2_idx[value], 8).value
                     if findpic is not None:
                         findpic = findpic.upper()
-                    current_task = {'name': value, 'start_date':start_date, 'due_date':end_date, 'pic' : findpic, 'subtasks': {}, }
+
+                    current_task = {'name': value[0], 'start_date':start_date, 'due_date':end_date, 'pic' : findpic, 'subtasks': {}, }
                     tasks_data.append(current_task)
                     temp = []
                 elif current_task is not None:
-                    subtask_value = col4_values[idx] if idx < len(col4_values) else None
+                    subtask_value = col3_values[idx] if idx < len(col3_values) else None
+                    
                     if subtask_value is not None:
+                        
                         p = find_col_with_filled_color(ws,idx+start_row)
                     
                         if p is not None:
                             if len(p)>1:
-                               
                                 week_start = min(p)
                                 week_end = max(p)
                             else:
@@ -206,23 +231,126 @@ def confirmation (request, name):
                         findpic = ws.cell(idx+start_row, 8).value
                         if findpic is not None:
                             findpic = findpic.upper()
-                        add = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date }
+                        add = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'subtasks' : {} }
                         temp.append(add)
                         current_task['subtasks'] = temp
-            
-            for item in tasks_data:
-                if item['subtasks']:
-                    forprint.append(item)
-                    for i in item['subtasks']:
-                        i['Parent'] = item['name']
-                        forprint.append(i)
-    
+
+                    else:
+                        subtask_value = col4_values[idx] if idx < len(col4_values) else None
+                        if subtask_value is not None:
+                            p = find_col_with_filled_color(ws,idx+start_row)
+                        
+                            if p is not None:
+                                if len(p)>1:
+                                    week_start = min(p)
+                                    week_end = max(p)
+                                else:
+                                    week_start = min(p)
+                                    week_end = None
+                            else:
+                                week_start = None
+                                week_end = None
+                            get_ranges =  get_date_range_for_week(2024, week_start, week_end)
+
+                            for start_date, end_date in get_ranges:
+                                start_date = start_date.strftime('%Y-%m-%d')
+                                end_date = end_date.strftime('%Y-%m-%d')
+                        
+                            findpic = ws.cell(idx+start_row, 8).value
+                            if findpic is not None:
+                                findpic = findpic.upper()
+                            add2 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'subtasks' : {}}
+                            temp2.append(add2)
+                            add['subtasks'] = temp2
+                            # print(add2)
+                        else:
+                            temp2 = []  
+                            subtask_value = col5_values[idx] if idx < len(col5_values) else None
+                            if subtask_value is not None:
+                                p = find_col_with_filled_color(ws,idx+start_row)
+                                if p is not None:
+                                    if len(p)>1:
+                                        week_start = min(p)
+                                        week_end = max(p)
+                                    else:
+                                        week_start = min(p)
+                                        week_end = None
+                                else:
+                                    week_start = None
+                                    week_end = None
+                                get_ranges =  get_date_range_for_week(2024, week_start, week_end)
+
+                                for start_date, end_date in get_ranges:
+                                    start_date = start_date.strftime('%Y-%m-%d')
+                                    end_date = end_date.strftime('%Y-%m-%d')
+                            
+                                findpic = ws.cell(idx+start_row, 8).value
+                                if findpic is not None:
+                                    findpic = findpic.upper()
+                                add3 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'subtasks' : {} }
+                                temp3.append(add3)
+                                add2['subtasks'] = temp3
+                                
+                            else:
+                                
+                                temp3 = []
+                                subtask_value = col6_values[idx] if idx < len(col6_values) else None
+                          
+                                if subtask_value is not None:
+                                    p = find_col_with_filled_color(ws,idx+start_row)
+                                  
+                                    if p is not None:
+                                        if len(p)>1:
+                                            week_start = min(p)
+                                            week_end = max(p)
+                                        else:
+                                            week_start = min(p)
+                                            week_end = None
+                                    else:
+                                        week_start = None
+                                        week_end = None
+                                    get_ranges =  get_date_range_for_week(2024, week_start, week_end)
+
+                                    for start_date, end_date in get_ranges:
+                                        start_date = start_date.strftime('%Y-%m-%d')
+                                        end_date = end_date.strftime('%Y-%m-%d')
+                                
+                                    findpic = ws.cell(idx+start_row, 8).value
+                                    if findpic is not None:
+                                        findpic = findpic.upper()
+                                    add4 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date }
+                                    temp4.append(add4)
+                                    add3['subtasks'] = temp4
+                       
+                                else:
+                                    temp4 = []
+
                 else:
-        
-                    forprint.append(item)
+          
+                    pass
+            
+          
+            def process_tasks(tasks, parent_name=None):
+                for task in tasks:
+                    # Assign the parent name to the task
+                    task['Parent'] = parent_name
+                    
+                    # Append the task to forprint
+                    forprint.append(task)
+                    
+                    # Check if the task has subtasks
+                    if 'subtasks' in task and task['subtasks']:
+                        # Recursively process the subtasks
+                        process_tasks(task['subtasks'], parent_name=task['name'])
+
+            process_tasks(tasks_data)
+            # print(forprint)
             user = redmine.user.get('current')
             request.session['forprint'] = forprint
+            for item in forprint:
+                print(item)
             request.session['name'] = name
+          
             return render (request, 'confirmation.html', {
                 'name' : name,
                 'tasks_data' : forprint,
@@ -235,8 +363,7 @@ def confirmation (request, name):
         else:
             forprint = request.session.get('forprint',[])
             name = request.session.get('name',[])
-
-            for item in forprint:
+            def create_issue(item):
                 id = name
                 form_name = f'name_{item['name']}'
                 form_description = f'description_{item['name']}'
@@ -249,6 +376,9 @@ def confirmation (request, name):
                 form_priority = f'priority_{item['name']}'
                 form_estimated_hours = f'estimated_hours_{item['name']}'
                 form_done_ratio = f'done_ratio_{item['name']}'
+                form_parent = f'parenttask_{item['name']}'
+          
+                parent = request.POST.get(form_parent)
                 subject = request.POST.get(form_name)
                 start_date = request.POST.get(form_start_date)
                 due_date = request.POST.get(form_due_date)
@@ -260,7 +390,16 @@ def confirmation (request, name):
                 done_ratio = request.POST.get(form_done_ratio)
                 department = request.POST.getlist(form_department)
                 responsible=request.POST.getlist(form_responsible)
+                nama_parent = form_parent.split("_")
+                nama_parent = nama_parent[1]
                 create = redmine.issue.new()
+                if parent is not None:
+                    parent_issue_id = redmine.issue.filter(project_id = id, subject=parent)
+                    for i in parent_issue_id:
+                        # print(i.id)
+                        create.parent_issue_id = i.id
+                else:
+                    print('gamasuk')
                 create.project_id = id
                 create.subject=subject
                 create.description = description
@@ -274,6 +413,38 @@ def confirmation (request, name):
                 create.custom_fields=[{'id':11, 'value':department}]
                 create.custom_fields=[{'id':4, 'value':responsible}]
                 create.save()
+
+            # Lists to store items based on conditions
+            first_condition_items = []
+            second_condition_items = []
+            last_condition_items = []
+        
+            # Classify items based on conditionss
+            for item in forprint:
+                if item.get('Parent') is None:
+                    first_condition_items.append(item)
+                elif item.get('subtasks') is not None and item.get('Parent') is not None:
+                    second_condition_items.append(item)
+                elif item.get('subtasks') is None and item.get('Parent') is not None:
+                    last_condition_items.append(item)
+                else:
+                    print('stillexists')
+           
+            # Process items sequentially
+            for item in first_condition_items:
+                print('first')
+                create_issue(item)
+           
+
+            for item in second_condition_items:
+                print('second')
+                create_issue(item)
+            
+
+            for item in last_condition_items:
+                print('last')
+                create_issue(item)
+              
 
             return redirect('listproject')
         
@@ -486,3 +657,9 @@ def deleteissue(request,id):
     p = delete['project']
     delete.delete()
     return redirect('listissue', id=p)
+
+# NOTES TO IMPROVE
+#  - Subissue dan related issue (waktu create issue ataupun import) *blum solved algonya
+#  - Update interface untuk yang diassign only/menerima task (multi user authentication)
+#  - Gantt chart (berat dan ribet dependencies)
+#  - Import excel tapi di existing project
