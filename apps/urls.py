@@ -13,5 +13,6 @@ urlpatterns = [
     path('newissue', views.newissue, name='newissue'),
     path('newproject', views.newproject, name='newproject'),
     path('confirmation/<str:name>', views.confirmation, name='confirmation'),
-    path('addrelation/<str:id>', views.addrelations, name='addrelation')
+    path('addrelation/<str:id>', views.addrelations, name='addrelation'),
+    path('testing', views.testing, name='testing')
 ]

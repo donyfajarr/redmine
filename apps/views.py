@@ -2,15 +2,19 @@ from django.shortcuts import render,redirect
 from redminelib import Redmine
 import ssl
 from openpyxl import load_workbook
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,date
 from . import models
-import time
+import mysql.connector
+from django.http import JsonResponse
+import requests
+
 
 ssl._create_default_https_context = ssl._create_unverified_context
 key = "a435e1173a8238a1fb5fd6d07bc8042c901abbfd"
 redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', key=key, requests={'verify': False,})
 users = []
 # Create your views here.
+
 
 # DASHBOARD
 def index(request):
@@ -471,14 +475,16 @@ def listissue(request,id):
             tes.append(item.due_date)
             listissue.append(tes)
         
-        if models.user.objects.exists():
-            pass
-        else:
+        # if models.user.objects.exists():
+        #     pass
+        # else:
             for i in range(1,77):
                 try:
                     user = redmine.user.get(i)
                     for item in user:
-                        models.user.objects.create(id=i, name = user.firstname +' '+user.lastname)
+                        print(item)
+                        # models.user.objects.create(id=i, name = user.firstname +' '+user.lastname)
+                        
                 except:
                     continue
         
@@ -504,7 +510,6 @@ def listdetails(request,id):
     dict['status'] = get.status
     dict['priority'] = get.priority
     dict['assigned_to'] = '-'
-    # dict['responsible'] = get.custom_fields(['id']==11)
     
     try:
         if get.custom_fields[0]['value']:
@@ -564,7 +569,55 @@ def listdetails(request,id):
     dict['due_date'] = get.due_date
     dict['estimated_hours'] = get.estimated_hours
     dict['done_ratio'] = get.done_ratio
-    
+
+
+    if models.user.objects.exists():
+        pass
+    else:
+        try:
+            connection = mysql.connector.connect(
+                host='10.58.1.2',
+                port='3307',
+                database='bitnami_redmine',
+                user='report',
+                password='mokondo12'
+            )
+            if connection.is_connected():
+                print('Connected to MySQL database')
+            cursor = connection.cursor()
+
+            # Define the SQL query
+            query = "SELECT users.id, users.firstname, users.lastname, email_addresses.user_id, address FROM users JOIN email_addresses ON users.id = email_addresses.user_id"
+            # query = "SELECT user_id, address FROM email_addresses"
+            # query = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'users'"
+            # query = "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE';"
+
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            for row in rows:
+                # print(row)
+                id, firstname, lastname, users_id, email = row
+                # print(id)
+                # try:
+                # models.user.objects.all().delete()
+                models.user.objects.create(id=id,name=firstname+ ' ' +lastname, email=email)
+                    # getmodel.email = email
+                    # getmodel.save()
+                # except:
+                #     print('not exists')
+
+
+        except mysql.connector.Error as e:
+            print(f'Error connecting to MySQL database: {e}')
+
+        finally:
+            # Close cursor and connection
+            if 'cursor' in locals():
+                cursor.close()
+            if 'connection' in locals() and connection.is_connected():
+                connection.close()
+                print('Connection to MySQL database closed')
+
    
     return render(request, 'listdetails.html',{
         'dict' : dict
@@ -684,35 +737,7 @@ def deleteissue(request,id):
 #  - Import excel tapi di existing project
 
 
-# SET REMINDER EMAIL
 
-# def get_details(i):
-#     task_info = {
-#         'id' : i['id'],
-#         'name' : i['subject'],
-#         'project' : i['project']['name'],
-#         'start_date' : i['start_date'],
-#         'due_date' : i['due_date']
-#     }
-#     return task_info
-
-# user = redmine.user.get('current')
-# users = user.issues
-# startselected_tasks = []
-# dueselected_tasks = []
-# inbetween = []
-# datenow = datetime.now().date()
-# for i in users:
-#     if i['start_date'] and i['start_date'] == datenow:
-#         startselected_tasks.append(get_details(i))
-#     if i['due_date'] and i['due_date'] == datenow:
-#         dueselected_tasks.append(get_details(i))
-#     if i['start_date'] and i['due_date']:
-#         if i['start_date'] <= datenow <= i['due_date']:
-#             inbetween.append(get_details(i))
-# print(startselected_tasks)
-# print(dueselected_tasks)
-# print(inbetween)
 
 def addrelations(request,id):
     if request.method == "GET":
@@ -721,7 +746,7 @@ def addrelations(request,id):
             'get':get
         })
     else:
-# INI NAMBAH RELATED ISSUE
+
         target = redmine.issue_relation.new()
         target.issue_id = request.POST['issue_id']
         target.issue_to_id = request.POST['issue_to_id']
@@ -729,23 +754,157 @@ def addrelations(request,id):
         target.save()
         return redirect ('listissue', id=id)
 
+    # SET REMINDER EMAIL
+def testing(request):
+    if request.method == "GET":
+        user = redmine.user.get('current')
+        user = user.id
+        try:
+            connection = mysql.connector.connect(
+                host='10.58.1.2',
+                port='3307',
+                database='bitnami_redmine',
+                user='report',
+                password='mokondo12'
+            )
+            if connection.is_connected():
+                print('Connected to MySQL database')
 
-# relation_type (string) – (required). Type of the relation, one of:
+            # Create a cursor object
+            cursor = connection.cursor()
 
-# relates
+            # Define the SQL query
+            query = [
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND start_date = %s",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND start_date <= %s AND %s <= due_date",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND due_date = %s",
 
-# duplicates
+            ]
+            today_date = date.today()
+            start_date = date(today_date.year, today_date.month, today_date.day)
+            params_list = [
+                (user, start_date),
+                (user, start_date, start_date),
+                (user, start_date)
+            ]
+            results = []
+            for queries, params in zip(query, params_list):
+                cursor.execute(queries,params)
+                rows=cursor.fetchall()
+                results.append(rows)
+            startselected_tasks = results[0]
+            between_tasks = results[1]
+            dueselected_tasks = results[2]
+            
+            startselected_tasks = [item for item in startselected_tasks]
+            between_tasks = [item for item in between_tasks]
+            dueselected_tasks = [item for item in dueselected_tasks]
+            def convert(i):
+               return [
+                    {
+                        "id": row[0],
+                        "subject": row[1],
+                        "project_id": row[2],
+                        "project_name": row[3],
+                        "start_date": row[4],
+                        "due_date": row[5]
+                    }
+                    for row in i
+                ]
+            startselected_tasks = convert(startselected_tasks)
+            between_tasks = convert(between_tasks)
+            dueselected_tasks = convert(dueselected_tasks)
 
-# duplicated
+            print(startselected_tasks)
+            print(between_tasks)
+            print(dueselected_tasks)
+            # query = "SELECT * FRO"
+            # query = "SELECT table_name FROM information_schema.tables WHERE table_schema='bitnami_redmine'"
+            # query = "SELECT user_id, address FROM email_addresses"
+            # query = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'projects'"
+            # query = "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE'"
+            # cursor.execute(query)
+            # Execute the query
 
-# blocks
+            # Fetch all the rows
+            # rows = cursor.fetchall()
+            # if rows:
+                # Process the rows
+                # for row in rows:
+                #     print(row)
+            # else:
+                # print("No rows found matching the criteria.")
 
-# blocked
+         
+        except mysql.connector.Error as e:
+            print(f'Error connecting to MySQL database: {e}')
 
-# precedes
+        finally:
 
-# follows
+            if 'cursor' in locals():
+                cursor.close()
+            if 'connection' in locals() and connection.is_connected():
+                connection.close()
+                print('Connection to MySQL database closed')
 
-# copied_to
+        def email(list):
+            for item in list:
+                get_issue = redmine.issue.get(item['id'])
+                if get_issue.custom_fields[0]['value']:
+                    for i in get_issue.custom_fields[0]['value']:
+                        user = models.user.objects.get(id=int(i))
+                        item['name'] = user.name
+                        item['email'] = user.email
+                    if list is startselected_tasks:
+                        print("starts")
+                        body = f"""
+                        Dear {item['name']},
 
-# copied_from
+                        You have a task that started today and  will be due on {item['due_date']} from {item['project_name']}
+                        with task subject : {item['subject']}
+                        """
+                    elif list is between_tasks:
+                        print("between")
+                        body = f"""
+                        Dear {item['name']},
+
+                        You still have a running task that started from {item['start_date']} and will be due on {item['due_date']}
+                        from {item['project_name']} with task subject : {item['subject']}
+                        """
+                    else:
+                        print("last")
+                        body = f"""
+                        
+                        Dear {item['name']},
+
+                        You have a task that will be due today on {item['due_date']} from {item['project_name']}
+                        with task subject : {item['subject']}
+
+
+                        """
+                    email_api = "http://10.24.7.70:3333/send-email"
+                    payload = {
+                        "to": [item['email']],
+                        "subject": f"#{item['id']} [{item['subject']}] Task Reminder",
+                        "body": body
+                    }
+
+                    # print(payload)
+                    response = requests.post(email_api, json = payload)
+
+                    if response.status_code == 200:
+                        print("Email sent successfully.")
+                    else:
+                        print(f"Failed to send email. Status code: {response.status_code}")
+                        print(response.text)  # Print the response content for debugging
+                else:
+                    print('gaada')
+                    break
+
+        email(startselected_tasks)
+        email(between_tasks)
+        email(dueselected_tasks)
+        
+        return render(request, "testing.html",{
+
+    })
