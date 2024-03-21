@@ -269,6 +269,7 @@
                                   {% endfor %}
                                 </select>
                             </div>
+                            
                             <div class="mb-3">
                                 <label for="defaultSelect" class="form-label">PIC</label>
                                 <select id="defaultSelect" class="form-select">
@@ -332,8 +333,9 @@
                               id="exampleFormControlSelect2"
                               aria-label="Multiple select example"
                             >
-                              {% for item in alluser %}
-                                <option value="{{item.id}}">{{item.name}}</option>
+                              {% for i in alluser %}
+                                <!-- <option value="{{i.id}}">{{i.name}}</option> -->
+                                <option value="{{ i.id }}" {% if i.name in item.person %}selected{% endif %}>{{ i.name }}</option>
                               {% endfor %}
                             </select>
                           

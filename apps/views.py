@@ -155,9 +155,6 @@ def confirmation (request, name):
             for row in ws.iter_rows(min_row=start_row, min_col=3, max_col=3, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
                 col3_values.append(cell_value)
-            # for row_idx, (cell_value,) in enumerate(ws.iter_rows(min_row=start_row, min_col=3, max_col=3, values_only=True), start=start_row):
-            #     col3_values.append(cell_value)
-            #     col3_idx[cell_value] = row_idx
             for row in ws.iter_rows(min_row=start_row, min_col=4, max_col=4, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
                 col4_values.append(cell_value)
@@ -201,8 +198,12 @@ def confirmation (request, name):
                     findpic = ws.cell(col2_idx[value], 8).value
                     if findpic is not None:
                         findpic = findpic.upper()
-
-                    current_task = {'name': value[0], 'start_date':start_date, 'due_date':end_date, 'pic' : findpic, 'subtasks': {}, }
+                    findperson = ws.cell(col2_idx[value], 61).value
+                    if findperson is not None:
+                        if ',' in findperson:
+                            findperson.split('')
+                        findperson = findperson
+                    current_task = {'name': value[0], 'start_date':start_date, 'due_date':end_date, 'pic' : findpic, 'person': findperson, 'subtasks': {}, }
                     tasks_data.append(current_task)
                     temp = []
                 elif current_task is not None:
@@ -231,7 +232,10 @@ def confirmation (request, name):
                         findpic = ws.cell(idx+start_row, 8).value
                         if findpic is not None:
                             findpic = findpic.upper()
-                        add = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'subtasks' : {} }
+                        findperson = ws.cell(idx+start_row, 61).value
+                        if findperson is not None:
+                            findperson = findperson
+                        add = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson, 'subtasks' : {} }
                         temp.append(add)
                         current_task['subtasks'] = temp
 
@@ -259,7 +263,12 @@ def confirmation (request, name):
                             findpic = ws.cell(idx+start_row, 8).value
                             if findpic is not None:
                                 findpic = findpic.upper()
-                            add2 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'subtasks' : {}}
+                            findperson = ws.cell(idx+start_row, 61).value
+                            if findperson is not None:
+                                if ',' in findperson:
+                                    findperson.split('')
+                                findperson = findperson
+                            add2 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson, 'subtasks' : {}}
                             temp2.append(add2)
                             add['subtasks'] = temp2
                             # print(add2)
@@ -287,7 +296,12 @@ def confirmation (request, name):
                                 findpic = ws.cell(idx+start_row, 8).value
                                 if findpic is not None:
                                     findpic = findpic.upper()
-                                add3 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'subtasks' : {} }
+                                findperson = ws.cell(idx+start_row, 61).value
+                                if findperson is not None:
+                                    if ',' in findperson:
+                                        findperson.split('')
+                                findperson = findperson
+                                add3 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson,'subtasks' : {} }
                                 temp3.append(add3)
                                 add2['subtasks'] = temp3
                                 
@@ -318,39 +332,33 @@ def confirmation (request, name):
                                     findpic = ws.cell(idx+start_row, 8).value
                                     if findpic is not None:
                                         findpic = findpic.upper()
-                                    add4 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date }
+                                    findperson = ws.cell(idx+start_row, 61).value
+                                    if findperson is not None:
+                                        if ',' in findperson:
+                                            findperson.split('')   
+                                    add4 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date,'person':findperson, 'due_date' : end_date }
                                     temp4.append(add4)
                                     add3['subtasks'] = temp4
-                       
                                 else:
                                     temp4 = []
-
                 else:
-          
                     pass
             
           
             def process_tasks(tasks, parent_name=None):
                 for task in tasks:
-                    # Assign the parent name to the task
                     task['Parent'] = parent_name
-                    
-                    # Append the task to forprint
                     forprint.append(task)
-                    
-                    # Check if the task has subtasks
                     if 'subtasks' in task and task['subtasks']:
-                        # Recursively process the subtasks
                         process_tasks(task['subtasks'], parent_name=task['name'])
 
             process_tasks(tasks_data)
-            # print(forprint)
             user = redmine.user.get('current')
             request.session['forprint'] = forprint
             for item in forprint:
                 print(item)
             request.session['name'] = name
-          
+
             return render (request, 'confirmation.html', {
                 'name' : name,
                 'tasks_data' : forprint,
@@ -366,6 +374,7 @@ def confirmation (request, name):
             def create_issue(item):
                 id = name
                 form_name = f'name_{item['name']}'
+               
                 form_description = f'description_{item['name']}'
                 form_start_date = f'start_date_{item['name']}'
                 form_due_date = f'due_date_{item['name']}'
@@ -377,7 +386,6 @@ def confirmation (request, name):
                 form_estimated_hours = f'estimated_hours_{item['name']}'
                 form_done_ratio = f'done_ratio_{item['name']}'
                 form_parent = f'parenttask_{item['name']}'
-          
                 parent = request.POST.get(form_parent)
                 subject = request.POST.get(form_name)
                 start_date = request.POST.get(form_start_date)
@@ -389,7 +397,7 @@ def confirmation (request, name):
                 estimated_hours = request.POST.get(form_estimated_hours)
                 done_ratio = request.POST.get(form_done_ratio)
                 department = request.POST.getlist(form_department)
-                responsible=request.POST.getlist(form_responsible)
+                responsible = request.POST.getlist(form_responsible)
                 nama_parent = form_parent.split("_")
                 nama_parent = nama_parent[1]
                 create = redmine.issue.new()
@@ -414,12 +422,10 @@ def confirmation (request, name):
                 create.custom_fields=[{'id':4, 'value':responsible}]
                 create.save()
 
-            # Lists to store items based on conditions
             first_condition_items = []
             second_condition_items = []
             last_condition_items = []
         
-            # Classify items based on conditionss
             for item in forprint:
                 if item.get('Parent') is None:
                     first_condition_items.append(item)
@@ -430,17 +436,12 @@ def confirmation (request, name):
                 else:
                     print('stillexists')
            
-            # Process items sequentially
             for item in first_condition_items:
                 print('first')
                 create_issue(item)
-           
-
             for item in second_condition_items:
                 print('second')
                 create_issue(item)
-            
-
             for item in last_condition_items:
                 print('last')
                 create_issue(item)
@@ -476,12 +477,14 @@ def listissue(request,id):
             for i in range(1,77):
                 try:
                     user = redmine.user.get(i)
-                    models.user.objects.create(id=i, name = user.firstname +' '+user.lastname)
+                    for item in user:
+                        models.user.objects.create(id=i, name = user.firstname +' '+user.lastname)
                 except:
                     continue
         
         return render(request, 'listissue.html',{
-        'listissue' : listissue
+        'listissue' : listissue,
+        'id' : id
     })
 
     elif request.method == "POST":
@@ -492,14 +495,6 @@ def listissue(request,id):
 def listdetails(request,id):
     get = redmine.issue.get(id)
     
-    # INI NAMBAH RELATED ISSUE
-
-    # target = redmine.issue_relation.new()
-    # target.issue_id = id
-    # target.issue_to_id = 11122
-    # target.relation_type = 'precedes'
-    # target.save()
-
     dict = {}
     listresponsible = []
     listdepartment = []
@@ -541,6 +536,30 @@ def listdetails(request,id):
     
 
 
+    relation  = redmine.issue_relation.filter(issue_id = id)
+    if relation:
+        list = {}
+        issue_id = []
+        relation_type = []
+        issue_to_id = []
+        for i in relation:
+            issue_id.append(i['issue_id'])
+            issue_to_id.append(i['issue_to_id'])
+            relation_type.append(i['relation_type'].capitalize())
+        list['issue_id'] = issue_id
+        list['relation_type'] = relation_type
+        list['issue_to_id'] = issue_to_id
+        dict['relation'] = list
+        relation_str = ""
+        for issue_id, issue_to_id, relation_type in zip(issue_id, issue_to_id, relation_type):
+            relation_str += f"<a href='/listdetails/{issue_id}'>#{issue_id}</a> {relation_type} to <a href='/listdetails/{issue_to_id}'>#{issue_to_id}</a>, "
+        relation_str = relation_str[:-2]
+        dict['relation'] = relation_str
+
+    else:
+        dict['relation'] = '-'
+
+    
     dict['start_date'] = get.start_date
     dict['due_date'] = get.due_date
     dict['estimated_hours'] = get.estimated_hours
@@ -663,3 +682,70 @@ def deleteissue(request,id):
 #  - Update interface untuk yang diassign only/menerima task (multi user authentication)
 #  - Gantt chart (berat dan ribet dependencies)
 #  - Import excel tapi di existing project
+
+
+# SET REMINDER EMAIL
+
+# def get_details(i):
+#     task_info = {
+#         'id' : i['id'],
+#         'name' : i['subject'],
+#         'project' : i['project']['name'],
+#         'start_date' : i['start_date'],
+#         'due_date' : i['due_date']
+#     }
+#     return task_info
+
+# user = redmine.user.get('current')
+# users = user.issues
+# startselected_tasks = []
+# dueselected_tasks = []
+# inbetween = []
+# datenow = datetime.now().date()
+# for i in users:
+#     if i['start_date'] and i['start_date'] == datenow:
+#         startselected_tasks.append(get_details(i))
+#     if i['due_date'] and i['due_date'] == datenow:
+#         dueselected_tasks.append(get_details(i))
+#     if i['start_date'] and i['due_date']:
+#         if i['start_date'] <= datenow <= i['due_date']:
+#             inbetween.append(get_details(i))
+# print(startselected_tasks)
+# print(dueselected_tasks)
+# print(inbetween)
+
+def addrelations(request,id):
+    if request.method == "GET":
+        get = redmine.issue.filter(project_id = id)
+        return render(request, 'addrelation.html',{
+            'get':get
+        })
+    else:
+# INI NAMBAH RELATED ISSUE
+        target = redmine.issue_relation.new()
+        target.issue_id = request.POST['issue_id']
+        target.issue_to_id = request.POST['issue_to_id']
+        target.relation_type = request.POST['relation_type']
+        target.save()
+        return redirect ('listissue', id=id)
+
+
+# relation_type (string) – (required). Type of the relation, one of:
+
+# relates
+
+# duplicates
+
+# duplicated
+
+# blocks
+
+# blocked
+
+# precedes
+
+# follows
+
+# copied_to
+
+# copied_from
