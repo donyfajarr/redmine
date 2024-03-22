@@ -586,21 +586,55 @@ def confirmation (request, name):
 def listissue(request,id):
     global users
     listissue = []
-    find = redmine.issue.filter(project_id=id,sort='start_date:asc')
-    if request.method == "GET":
-        for item in find:
-            tes = []
-            tes.append(item.id)
-            tes.append(item.subject)
-            tes.append(str(item.status))
-            try:
-                tes.append(item.assigned_to)
-            except:
-                tes.append('-')
-            tes.append(item.start_date)
-            tes.append(item.due_date)
-            listissue.append(tes)
+    try:
+        connection = mysql.connector.connect(
+            host='10.58.1.2',
+            port='3307',
+            database='bitnami_redmine',
+            user='report',
+            password='mokondo12'
+        )
+        if connection.is_connected():
+            print('Connected to MySQL database')
+
+        # Create a cursor object
+        cursor = connection.cursor()
+        query1 = "SELECT issues.id, issues.subject, issues.status_id, users.firstname, users.lastname, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id JOIN users ON issues.assigned_to_id = users.id WHERE projects.identifier = %s AND projects.status !=5"
+        # query1 = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'users'"
+        cursor.execute(query1, (id,))
+        rows1 = cursor.fetchall()
+        if rows1:
+            for row in rows1:
+                print(row)
+                list = []
+                list.append(row[0])
+                list.append(row[1])
+                p = models.status.objects.get(id=row[2])
+                list.append(p.name)
+                try:
+                    list.append(row[3] + " " + row[4])
+                except:
+                    pass
+                list.append(row[5])
+                list.append(row[6])
+                listissue.append(list)
+        
+        else:
+            print("No rows found matching the criteria.")
+
+    except mysql.connector.Error as e:
+        print(f'Error connecting to MySQL database: {e}')
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+            print('Connection to MySQL database closed')
     
+    
+    
+    if request.method == "GET":
         
         return render(request, 'listissue.html',{
         'listissue' : listissue,
@@ -696,11 +730,49 @@ def newissue(request):
     allpriority = models.priority.objects.all()
     alluser = models.user.objects.all()
     listproject = []
-    for i in redmine.project.all():
-        list = {}
-        list['name'] = i.name
-        list['id'] = i.identifier
-        listproject.append(list)
+    try:
+        connection = mysql.connector.connect(
+            host='10.58.1.2',
+            port='3307',
+            database='bitnami_redmine',
+            user='report',
+            password='mokondo12'
+        )
+        if connection.is_connected():
+            print('Connected to MySQL database')
+
+        # Create a cursor object
+        cursor = connection.cursor()
+        query1 = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC "
+        today_date = date.today() + timedelta(days=3)
+        author_id = user.id
+        cursor.execute(query1, (author_id,))
+        rows1 = cursor.fetchall()
+        if rows1:
+            for row in rows1:
+                list = {}
+                list['id'] = row[0]
+                list['name'] = row[1]
+                listproject.append(list)
+        
+        else:
+            print("No rows found matching the criteria.")
+
+    except mysql.connector.Error as e:
+        print(f'Error connecting to MySQL database: {e}')
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+            print('Connection to MySQL database closed')
+
+    # for i in redmine.project.all():
+    #     list = {}
+    #     list['name'] = i.name
+    #     list['id'] = i.identifier
+    #     listproject.append(list)
     if request.method == "GET":
         return render(request, 'newissue.html',{
             'all' : all,
@@ -797,14 +869,6 @@ def deleteissue(request,id):
     p = delete['project']
     delete.delete()
     return redirect('listissue', id=p)
-
-# NOTES TO IMPROVE
-#  - Subissue dan related issue (waktu create issue ataupun import) *blum solved algonya
-#  - Update interface untuk yang diassign only/menerima task (multi user authentication)
-#  - Gantt chart (berat dan ribet dependencies)
-#  - Import excel tapi di existing project
-
-
 
 
 def addrelations(request,id):
@@ -920,18 +984,12 @@ def testing(request):
             print(startselected_tasks)
             print(between_tasks)
             print(dueselected_tasks)
-            # query = "SELECT * FRO"
-            # query = "SELECT table_name FROM information_schema.tables WHERE table_schema='bitnami_redmine'"
-            # query = "SELECT user_id, address FROM email_addresses"
+        
             # query = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'projects'"
             # query = "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE'"
             # cursor.execute(query)
-            # Execute the query
-
-            # Fetch all the rows
             # rows = cursor.fetchall()
             # if rows:
-                # Process the rows
                 # for row in rows:
                 #     print(row)
             # else:
