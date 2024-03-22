@@ -35,7 +35,7 @@ def index(request):
 
         # Create a cursor object
         cursor = connection.cursor()
-        query1 = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s ORDER BY projects.name ASC "
+        query1 = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC "
         today_date = date.today() + timedelta(days=3)
         start_date = date(today_date.year, today_date.month, today_date.day)
         author_id = user
@@ -48,7 +48,7 @@ def index(request):
                 list['name'] = row[1]
                 listproject.append(list)
         
-        query2 = "SELECT issues.id, issues.subject, issues.due_date, issues.project_id, projects.name FROM issues JOIN projects ON issues.project_id = projects.id WHERE author_id = %s AND due_date <= %s"
+        query2 = "SELECT issues.id, issues.subject, issues.due_date, issues.project_id, projects.name FROM issues JOIN projects ON issues.project_id = projects.id WHERE author_id = %s AND projects.status !=5 AND due_date <= %s"
 
         cursor.execute(query2, (author_id, start_date))
         rows2 = cursor.fetchall()
@@ -94,11 +94,46 @@ def index(request):
 # PROJECT
 def listproject(request):
     listproject = []
-    for i in redmine.project.all():
-        list = []
-        list.append(i.name)
-        list.append(i.identifier)
-        listproject.append(list)
+    users = redmine.user.get('current')
+    user = users.id
+    try:
+        connection = mysql.connector.connect(
+            host='10.58.1.2',
+            port='3307',
+            database='bitnami_redmine',
+            user='report',
+            password='mokondo12'
+        )
+        if connection.is_connected():
+            print('Connected to MySQL database')
+
+        # Create a cursor object
+        cursor = connection.cursor()
+        query1 = "SELECT projects.name, projects.identifier FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC"
+        author_id = user
+        cursor.execute(query1, (author_id,))
+        rows1 = cursor.fetchall()
+        print(len(rows1))
+        if rows1:
+            for row in rows1:
+                list = []
+                list.append(row[0])
+                list.append(row[1])
+                listproject.append(list)
+                # print(row)
+        
+        else:
+            print("No rows found matching the criteria.")
+
+    except mysql.connector.Error as e:
+        print(f'Error connecting to MySQL database: {e}')
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+            print('Connection to MySQL database closed')
     return render(request, 'listproject.html',{
         'listproject' : listproject
     })
@@ -117,9 +152,47 @@ def updateproject(request,id):
 def newproject(request):
     listproject = []
     new = redmine.project.new()
-    getparent = redmine.project.all()
-    for i in getparent:
-        listproject.append(i)
+    users = redmine.user.get('current')
+    user = users.id
+    try:
+        connection = mysql.connector.connect(
+            host='10.58.1.2',
+            port='3307',
+            database='bitnami_redmine',
+            user='report',
+            password='mokondo12'
+        )
+        if connection.is_connected():
+            print('Connected to MySQL database')
+
+        # Create a cursor object
+        cursor = connection.cursor()
+        query1 = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC"
+        author_id = user
+        cursor.execute(query1, (author_id,))
+        rows1 = cursor.fetchall()
+        print(len(rows1))
+        if rows1:
+            for row in rows1:
+                list = {}
+                list['id'] = row[0]
+                list['name'] = row[1]
+                listproject.append(list)
+                # print(row)
+        
+        else:
+            print("No rows found matching the criteria.")
+
+    except mysql.connector.Error as e:
+        print(f'Error connecting to MySQL database: {e}')
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+            print('Connection to MySQL database closed')
+
     if request.method == "GET":
         return render (request, 'newproject.html',{
             'listproject' : listproject
@@ -243,7 +316,7 @@ def confirmation (request, name):
                     findperson = ws.cell(col2_idx[value], 61).value
                     if findperson is not None:
                         if ',' in findperson:
-                            findperson.split('')
+                            findperson.split(',')
                         findperson = findperson
                     current_task = {'name': value[0], 'start_date':start_date, 'due_date':end_date, 'pic' : findpic, 'person': findperson, 'subtasks': {}, }
                     tasks_data.append(current_task)
@@ -276,6 +349,8 @@ def confirmation (request, name):
                             findpic = findpic.upper()
                         findperson = ws.cell(idx+start_row, 61).value
                         if findperson is not None:
+                            if ',' in findperson:
+                                findperson.split(',')
                             findperson = findperson
                         add = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson, 'subtasks' : {} }
                         temp.append(add)
@@ -308,7 +383,7 @@ def confirmation (request, name):
                             findperson = ws.cell(idx+start_row, 61).value
                             if findperson is not None:
                                 if ',' in findperson:
-                                    findperson.split('')
+                                    findperson.split(',')
                                 findperson = findperson
                             add2 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson, 'subtasks' : {}}
                             temp2.append(add2)
@@ -341,7 +416,7 @@ def confirmation (request, name):
                                 findperson = ws.cell(idx+start_row, 61).value
                                 if findperson is not None:
                                     if ',' in findperson:
-                                        findperson.split('')
+                                        findperson.split(',')
                                 findperson = findperson
                                 add3 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson,'subtasks' : {} }
                                 temp3.append(add3)
@@ -377,7 +452,7 @@ def confirmation (request, name):
                                     findperson = ws.cell(idx+start_row, 61).value
                                     if findperson is not None:
                                         if ',' in findperson:
-                                            findperson.split('')   
+                                            findperson.split(',')   
                                     add4 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date,'person':findperson, 'due_date' : end_date }
                                     temp4.append(add4)
                                     add3['subtasks'] = temp4
@@ -397,8 +472,8 @@ def confirmation (request, name):
             process_tasks(tasks_data)
             user = redmine.user.get('current')
             request.session['forprint'] = forprint
-            for item in forprint:
-                print(item)
+            # for item in forprint:
+            #     print(item)
             request.session['name'] = name
 
             return render (request, 'confirmation.html', {
@@ -416,7 +491,6 @@ def confirmation (request, name):
             def create_issue(item):
                 id = name
                 form_name = f'name_{item['name']}'
-               
                 form_description = f'description_{item['name']}'
                 form_start_date = f'start_date_{item['name']}'
                 form_due_date = f'due_date_{item['name']}'
@@ -467,8 +541,12 @@ def confirmation (request, name):
             first_condition_items = []
             second_condition_items = []
             last_condition_items = []
-        
+            all_responsible_users = []
+
+            responsible2 = []
             for item in forprint:
+                responsible_users = request.POST.getlist(f'responsible_{item["name"]}[]')
+                responsible2.append(responsible_users)
                 if item.get('Parent') is None:
                     first_condition_items.append(item)
                 elif item.get('subtasks') is not None and item.get('Parent') is not None:
@@ -477,18 +555,28 @@ def confirmation (request, name):
                     last_condition_items.append(item)
                 else:
                     print('stillexists')
-           
+
+            flat = [item for sublist in responsible2 for item in sublist]
+            all_responsible_users = list(set(flat))
+
+            if all_responsible_users:
+                for user_id in all_responsible_users:
+                    try:
+                        new_membership = redmine.project_membership.new()
+                        new_membership.project_id = name
+                        new_membership.user_id = user_id
+                        new_membership.role_ids = [6]  # Assuming 6 is the role ID for the desired role
+                        new_membership.save()
+                    except:
+                        pass
+                
             for item in first_condition_items:
-                print('first')
                 create_issue(item)
             for item in second_condition_items:
-                print('second')
                 create_issue(item)
             for item in last_condition_items:
-                print('last')
                 create_issue(item)
-              
-
+            
             return redirect('listproject')
         
     return render(request, 'confirmation.html', {\
@@ -512,19 +600,7 @@ def listissue(request,id):
             tes.append(item.start_date)
             tes.append(item.due_date)
             listissue.append(tes)
-        
-        # if models.user.objects.exists():
-        #     pass
-        # else:
-            for i in range(1,77):
-                try:
-                    user = redmine.user.get(i)
-                    for item in user:
-                        print(item)
-                        # models.user.objects.create(id=i, name = user.firstname +' '+user.lastname)
-                        
-                except:
-                    continue
+    
         
         return render(request, 'listissue.html',{
         'listissue' : listissue,
@@ -550,14 +626,17 @@ def listdetails(request,id):
     dict['assigned_to'] = '-'
     
     try:
+        print('aman')
         if get.custom_fields[0]['value']:
             for i in get.custom_fields[0]['value']:
                 user = models.user.objects.get(id=int(i))
                 listresponsible.append(user.name)
             listresponsible = ', '.join(listresponsible)
             dict['responsible'] = listresponsible
+            print(listresponsible)
         else:
             dict['responsible'] = '-'
+        
     except:
         pass
     try:
@@ -577,8 +656,6 @@ def listdetails(request,id):
     except:
         pass
     
-
-
     relation  = redmine.issue_relation.filter(issue_id = id)
     if relation:
         list = {}
@@ -606,55 +683,7 @@ def listdetails(request,id):
     dict['start_date'] = get.start_date
     dict['due_date'] = get.due_date
     dict['estimated_hours'] = get.estimated_hours
-    dict['done_ratio'] = get.done_ratio
-
-
-    if models.user.objects.exists():
-        pass
-    else:
-        try:
-            connection = mysql.connector.connect(
-                host='10.58.1.2',
-                port='3307',
-                database='bitnami_redmine',
-                user='report',
-                password='mokondo12'
-            )
-            if connection.is_connected():
-                print('Connected to MySQL database')
-            cursor = connection.cursor()
-
-            # Define the SQL query
-            query = "SELECT users.id, users.firstname, users.lastname, email_addresses.user_id, address FROM users JOIN email_addresses ON users.id = email_addresses.user_id"
-            # query = "SELECT user_id, address FROM email_addresses"
-            # query = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'users'"
-            # query = "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE';"
-
-            cursor.execute(query)
-            rows = cursor.fetchall()
-            for row in rows:
-                # print(row)
-                id, firstname, lastname, users_id, email = row
-                # print(id)
-                # try:
-                # models.user.objects.all().delete()
-                models.user.objects.create(id=id,name=firstname+ ' ' +lastname, email=email)
-                    # getmodel.email = email
-                    # getmodel.save()
-                # except:
-                #     print('not exists')
-
-
-        except mysql.connector.Error as e:
-            print(f'Error connecting to MySQL database: {e}')
-
-        finally:
-            # Close cursor and connection
-            if 'cursor' in locals():
-                cursor.close()
-            if 'connection' in locals() and connection.is_connected():
-                connection.close()
-                print('Connection to MySQL database closed')
+    dict['done_ratio'] = get.done_ratio    
 
    
     return render(request, 'listdetails.html',{
@@ -723,6 +752,7 @@ def updateissue(request,id):
         listresponsible.append(int(i))
     for i in dept[7]['value']:
         listdept.append(i)
+    
     if request.method == "GET":
         
         return render(request, 'updateissue.html',{
@@ -753,7 +783,7 @@ def updateissue(request,id):
         
         update.assigned_to_id = request.POST['assigned_to']
         responsible = request.POST.getlist('responsible[]')
-        
+        print(responsible)
         update.custom_fields=[{'id':4, 'value':responsible}]
     
         update.estimated_hours = request.POST['estimated_hours']
@@ -795,6 +825,40 @@ def addrelations(request,id):
     # SET REMINDER EMAIL
 def testing(request):
     if request.method == "GET":
+        try:
+            connection = mysql.connector.connect(
+                host='10.58.1.2',
+                port='3307',
+                database='bitnami_redmine',
+                user='report',
+                password='mokondo12'
+            )
+            if connection.is_connected():
+                print('Connected to MySQL database')
+            cursor = connection.cursor()
+            query = "SELECT users.id, users.firstname, users.lastname, address FROM users JOIN email_addresses ON users.id = email_addresses.user_id"
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            models.user.objects.all().delete()
+            for row in rows:
+                id, firstname, lastname, email = row
+                try:
+                    models.user.objects.create(id=id,name=firstname+ ' ' +lastname, email=email)
+                except:
+                    print('not exists')
+        except mysql.connector.Error as e:
+            print(f'Error connecting to MySQL database: {e}')
+
+        finally:
+            # Close cursor and connection
+            if 'cursor' in locals():
+                cursor.close()
+            if 'connection' in locals() and connection.is_connected():
+                connection.close()
+                print('Connection to MySQL database closed')
+
+
+
         user = redmine.user.get('current')
         user = user.id
         try:
@@ -878,7 +942,6 @@ def testing(request):
             print(f'Error connecting to MySQL database: {e}')
 
         finally:
-
             if 'cursor' in locals():
                 cursor.close()
             if 'connection' in locals() and connection.is_connected():
