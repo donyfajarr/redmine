@@ -18,29 +18,67 @@ users = []
 
 # DASHBOARD
 def index(request):
+    users = redmine.user.get('current')
+    user = users.id
     listproject = []
-    for i in redmine.project.all():
-        list = {}
-        list['name'] = i.name
-        list['id'] = i.identifier
-        listproject.append(list)
-    sum = len(listproject)
-    user = redmine.user.get('current')
-    users = user.issues
     selected_tasks = []
-    p = len(users)
-    due_date_threshold = datetime.now().date() + timedelta(days=3)
-    for i in reversed(users):
-        if i['due_date'] and i['due_date'] <= due_date_threshold:
-            task_info = {
-                'id' : i['id'],
-                'name': i['subject'],
-                'project': i['project']['name'],
-                'due_date': i['due_date']
-            }
-            selected_tasks.append(task_info)
-            if len(selected_tasks) == 3:
-                break
+    try:
+        connection = mysql.connector.connect(
+            host='10.58.1.2',
+            port='3307',
+            database='bitnami_redmine',
+            user='report',
+            password='mokondo12'
+        )
+        if connection.is_connected():
+            print('Connected to MySQL database')
+
+        # Create a cursor object
+        cursor = connection.cursor()
+        query1 = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s ORDER BY projects.name ASC "
+        today_date = date.today() + timedelta(days=3)
+        start_date = date(today_date.year, today_date.month, today_date.day)
+        author_id = user
+        cursor.execute(query1, (author_id,))
+        rows1 = cursor.fetchall()
+        if rows1:
+            for row in rows1:
+                list = {}
+                list['id'] = row[0]
+                list['name'] = row[1]
+                listproject.append(list)
+        
+        query2 = "SELECT issues.id, issues.subject, issues.due_date, issues.project_id, projects.name FROM issues JOIN projects ON issues.project_id = projects.id WHERE author_id = %s AND due_date <= %s"
+
+        cursor.execute(query2, (author_id, start_date))
+        rows2 = cursor.fetchall()
+        p = len(rows2)
+        print(p)
+        if rows2:
+            for row in rows2:
+                task_info = {
+                'id' : row[0],
+                'name' : row[1],
+                'project' : row[4],
+                'due_date' : row[2]
+                }
+                selected_tasks.append(task_info)
+                if len(selected_tasks) == 3:
+                    break
+        else:
+            print("No rows found matching the criteria.")
+
+    except mysql.connector.Error as e:
+        print(f'Error connecting to MySQL database: {e}')
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+            print('Connection to MySQL database closed')
+
+    sum = len(listproject)
     if request.method == "POST":
         go = request.POST['go']
         return redirect ('listissue', id=str(go))
@@ -48,7 +86,7 @@ def index(request):
     return render(request,'index.html',{
         'selected_tasks' : selected_tasks,
         'p' : p,
-        'name' : user['firstname'] +' ' + user['lastname'],
+        'name' : users['firstname'] +' ' + users['lastname'],
         'listproject' : listproject,
         'sum' : sum
     }) 
@@ -890,13 +928,13 @@ def testing(request):
                     }
 
                     # print(payload)
-                    response = requests.post(email_api, json = payload)
+                    # response = requests.post(email_api, json = payload)
 
-                    if response.status_code == 200:
-                        print("Email sent successfully.")
-                    else:
-                        print(f"Failed to send email. Status code: {response.status_code}")
-                        print(response.text)  # Print the response content for debugging
+                    # if response.status_code == 200:
+                    #     print("Email sent successfully.")
+                    # else:
+                    #     print(f"Failed to send email. Status code: {response.status_code}")
+                    #     print(response.text)  # Print the response content for debugging
                 else:
                     print('gaada')
                     break
