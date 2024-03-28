@@ -113,7 +113,6 @@ def listproject(request):
         author_id = user
         cursor.execute(query1, (author_id,))
         rows1 = cursor.fetchall()
-        print(len(rows1))
         if rows1:
             for row in rows1:
                 list = []
