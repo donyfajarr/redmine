@@ -136,8 +136,10 @@
               </div>
               <!-- /Logo -->
               <h5 class="mb-2">Welcome to Redmine Manager! 👋</h5>
-              <p class="mb-4">Please sign-in to your account and start the adventure!</p>
-              
+              <p class="mb-2">Please sign-in to your account and start the adventure!</p>
+              {% if error_message %}
+              <div class="mb-2 text-danger fw-semibold">{{ error_message }}</div>
+              {% endif %}
               <form id="formAuthentication" class="mb-3" method="POST">
                 {% csrf_token %}
                 <div class="mb-3">
@@ -148,7 +150,7 @@
                     id="email"
                     name="username"
                     placeholder="Enter your email or username"
-                    autofocus
+                    autofocus required
                   />
                 </div>
                 <div class="mb-3 form-password-toggle">
@@ -171,14 +173,14 @@
                       class="form-control"
                       name="password"
                       placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
-                      aria-describedby="password"
+                      aria-describedby="password" required
                     />
                     <span class="input-group-text cursor-pointer"><i class="bx bx-hide"></i></span>
                   </div>
                 </div>
                 <div class="mb-3">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="remember-me" />
+                    <input class="form-check-input" type="checkbox" id="remember-me" checked/>
                     <label class="form-check-label" for="remember-me"> Remember Me </label>
                   </div>
                 </div>
@@ -186,7 +188,7 @@
                   <button class="btn btn-primary d-grid w-100" type="submit">Sign in</button>
                 </div>
               </form>
-
+              
             
             </div>
           </div>

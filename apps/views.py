@@ -1,5 +1,6 @@
 from django.shortcuts import render,redirect
 from redminelib import Redmine
+from redminelib.exceptions import AuthError
 import ssl
 from openpyxl import load_workbook
 from datetime import datetime, timedelta,date
@@ -8,6 +9,7 @@ import mysql.connector
 from django.http import JsonResponse
 import requests
 from .decorators import check_login_session, initialize_redmine
+from django.contrib import messages
 
 ssl._create_default_https_context = ssl._create_unverified_context
 # key = "a435e1173a8238a1fb5fd6d07bc8042c901abbfd"
@@ -31,18 +33,24 @@ def login(request):
             print('b')
             return render(request, 'login.html')
     else:
-        print('b')
+        print('b kah')
         username = request.POST['username']
         password = request.POST['password']
-        redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', 
-                                  username=username, 
-                                  password=password, 
-                                  requests={'verify': False})
-        print(redmine)
-        request.session['username'] = username
-        request.session['password'] = password
-        # print(username, password)
-        return redirect('index')
+        try:
+            redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', 
+                                    username=username, 
+                                    password=password, 
+                                    requests={'verify': False})
+            redmine.user.get('current')
+            request.session['username'] = username
+            request.session['password'] = password
+            # print(username, password)
+            return redirect('index')
+        except AuthError:
+            # Handle authentication error
+            error_message = "Invalid username or password. Please try again!"
+            messages.error(request, error_message)
+            return render(request, 'login.html', {'error_message': error_message})
     
 def logout(request):
     global redmine
