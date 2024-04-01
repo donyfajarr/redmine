@@ -7,17 +7,55 @@ from . import models
 import mysql.connector
 from django.http import JsonResponse
 import requests
-
+from .decorators import check_login_session, initialize_redmine
 
 ssl._create_default_https_context = ssl._create_unverified_context
 key = "a435e1173a8238a1fb5fd6d07bc8042c901abbfd"
-redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', key=key, requests={'verify': False,})
+# redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', key=key, requests={'verify': False,})
+
 users = []
 # Create your views here.
+# def initialize_redmine(username,password ):
+#     global redmine
+#     redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', username=username, password=password, requests={'verify': False,})
 
+
+def login(request):
+    global redmine
+    if request.method == "GET":
+        if request.session.get('username') and request.session.get('password'):
+            print('a')
+            # If session exists, redirect to another function
+            return redirect('index')
+        else:
+            print('b')
+            return render(request, 'login.html')
+    else:
+        print('b')
+        username = request.POST['username']
+        password = request.POST['password']
+        redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', 
+                                  username=username, 
+                                  password=password, 
+                                  requests={'verify': False})
+        print(redmine)
+        request.session['username'] = username
+        request.session['password'] = password
+        # print(username, password)
+        return redirect('index')
+    
+def logout(request):
+    global redmine
+    del request.session['username']
+    del request.session['password']
+    return redirect ('login')
 
 # DASHBOARD
+@check_login_session
+@initialize_redmine
 def index(request):
+    global redmine
+    print(redmine)
     users = redmine.user.get('current')
     user = users.id
     listproject = []
@@ -92,6 +130,8 @@ def index(request):
     }) 
 
 # PROJECT
+@check_login_session
+@initialize_redmine
 def listproject(request):
     listproject = []
     users = redmine.user.get('current')
@@ -136,6 +176,8 @@ def listproject(request):
     return render(request, 'listproject.html',{
         'listproject' : listproject
     })
+@check_login_session
+@initialize_redmine
 def updateproject(request,id):
     update = redmine.project.get(id)
     if request.method == "GET":
@@ -148,6 +190,8 @@ def updateproject(request,id):
         update.is_public = eval(request.POST['is_public'])
         update.save()
         return redirect('listproject')
+@check_login_session
+@initialize_redmine
 def newproject(request):
     listproject = []
     new = redmine.project.new()
@@ -211,6 +255,8 @@ def newproject(request):
             new.parent_id = request.POST['parent']
         new.save()
         return redirect ('confirmation', name=request.POST['name'])
+@check_login_session
+@initialize_redmine
 def confirmation (request, name):
     
     if request.method == 'POST':
@@ -582,6 +628,8 @@ def confirmation (request, name):
         })
 
 # ISSUE
+@check_login_session
+@initialize_redmine
 def listissue(request,id):
     global users
     listissue = []
@@ -645,6 +693,8 @@ def listissue(request,id):
         tes.export('csv', savepath='../redmine/', columns='all')    
         return redirect('listissue')
     
+@check_login_session
+@initialize_redmine
 def listdetails(request,id):
     get = redmine.issue.get(id)
     
@@ -722,6 +772,8 @@ def listdetails(request,id):
     return render(request, 'listdetails.html',{
         'dict' : dict
     })
+@check_login_session
+@initialize_redmine
 def newissue(request):
     user = redmine.user.get('current')
     alldept = models.dept.objects.all()
@@ -808,6 +860,8 @@ def newissue(request):
         print('jalan')
         new.save()
         return redirect('listproject')
+@check_login_session
+@initialize_redmine
 def updateissue(request,id):
     listdept = []
     listresponsible = []
@@ -862,14 +916,16 @@ def updateissue(request,id):
 
         update.save()
         return redirect('listdetails',id=id)
-    
+@check_login_session
+@initialize_redmine    
 def deleteissue(request,id):
     delete = redmine.issue.get(id)
     p = delete['project']
     delete.delete()
     return redirect('listissue', id=p)
 
-
+@check_login_session
+@initialize_redmine
 def addrelations(request,id):
     if request.method == "GET":
         get = redmine.issue.filter(project_id = id)
@@ -886,6 +942,8 @@ def addrelations(request,id):
         return redirect ('listissue', id=id)
 
     # SET REMINDER EMAIL
+@check_login_session
+@initialize_redmine
 def testing(request):
     if request.method == "GET":
         try:
