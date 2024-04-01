@@ -223,11 +223,11 @@
                           </div>
                           <div class="d-flex w-100 flex-wrap align-items-center justify-content-between gap-2">
                             <div class="me-2">
-                              <a href="{% url 'listdetails' item.id %}"><h6 class="fs-5 mb-0 ">{{item.name}}</h6></a>
-                              <small class="text-muted mb-0">{{item.project}}</small>
+                              <a href="{% url 'listdetails' item.id %}"><h6 class="fs-5 ">{{item.name}}</h6></a>
+                              <small class="text-muted">{{item.project}}</small>
                             </div>
-                            <div class="user-progress">
-                              <small class="fw-semibold">Due {{item.due_date}}</small>
+                            <div class="user-progress ps-4">
+                              <small class="fw-semibold ps-4 ms-auto">Due {{item.due_date}}</small>
                             </div>
                           </div>
                         </li>
