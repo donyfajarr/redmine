@@ -31,5 +31,6 @@ def initialize_redmine(view_func):
                                 password=password, 
                                 requests={'verify': False})
         print(redmine)
+        kwargs['redmine'] = redmine
         return view_func(request, *args, **kwargs)
     return wrapper

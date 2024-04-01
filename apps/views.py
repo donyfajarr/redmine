@@ -10,7 +10,7 @@ import requests
 from .decorators import check_login_session, initialize_redmine
 
 ssl._create_default_https_context = ssl._create_unverified_context
-key = "a435e1173a8238a1fb5fd6d07bc8042c901abbfd"
+# key = "a435e1173a8238a1fb5fd6d07bc8042c901abbfd"
 # redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', key=key, requests={'verify': False,})
 
 users = []
@@ -53,8 +53,7 @@ def logout(request):
 # DASHBOARD
 @check_login_session
 @initialize_redmine
-def index(request):
-    global redmine
+def index(request, redmine):
     print(redmine)
     users = redmine.user.get('current')
     user = users.id
@@ -132,7 +131,7 @@ def index(request):
 # PROJECT
 @check_login_session
 @initialize_redmine
-def listproject(request):
+def listproject(request, redmine):
     listproject = []
     users = redmine.user.get('current')
     user = users.id
@@ -178,7 +177,7 @@ def listproject(request):
     })
 @check_login_session
 @initialize_redmine
-def updateproject(request,id):
+def updateproject(request,id, redmine):
     update = redmine.project.get(id)
     if request.method == "GET":
         return render(request, 'updateproject.html',{
@@ -192,7 +191,7 @@ def updateproject(request,id):
         return redirect('listproject')
 @check_login_session
 @initialize_redmine
-def newproject(request):
+def newproject(request, redmine):
     listproject = []
     new = redmine.project.new()
     users = redmine.user.get('current')
@@ -257,7 +256,7 @@ def newproject(request):
         return redirect ('confirmation', name=request.POST['name'])
 @check_login_session
 @initialize_redmine
-def confirmation (request, name):
+def confirmation (request, name, redmine):
     
     if request.method == 'POST':
         allstatus = models.status.objects.all()
@@ -630,7 +629,7 @@ def confirmation (request, name):
 # ISSUE
 @check_login_session
 @initialize_redmine
-def listissue(request,id):
+def listissue(request,id, redmine):
     global users
     listissue = []
     try:
@@ -695,7 +694,7 @@ def listissue(request,id):
     
 @check_login_session
 @initialize_redmine
-def listdetails(request,id):
+def listdetails(request,id, redmine):
     get = redmine.issue.get(id)
     
     dict = {}
@@ -774,7 +773,7 @@ def listdetails(request,id):
     })
 @check_login_session
 @initialize_redmine
-def newissue(request):
+def newissue(request, redmine):
     user = redmine.user.get('current')
     alldept = models.dept.objects.all()
     allstatus = models.status.objects.all()
@@ -862,7 +861,7 @@ def newissue(request):
         return redirect('listproject')
 @check_login_session
 @initialize_redmine
-def updateissue(request,id):
+def updateissue(request,id, redmine):
     listdept = []
     listresponsible = []
     update = redmine.issue.get(id)
@@ -918,7 +917,7 @@ def updateissue(request,id):
         return redirect('listdetails',id=id)
 @check_login_session
 @initialize_redmine    
-def deleteissue(request,id):
+def deleteissue(request,id, redmine):
     delete = redmine.issue.get(id)
     p = delete['project']
     delete.delete()
@@ -926,7 +925,7 @@ def deleteissue(request,id):
 
 @check_login_session
 @initialize_redmine
-def addrelations(request,id):
+def addrelations(request,id, redmine):
     if request.method == "GET":
         get = redmine.issue.filter(project_id = id)
         return render(request, 'addrelation.html',{
@@ -944,7 +943,7 @@ def addrelations(request,id):
     # SET REMINDER EMAIL
 @check_login_session
 @initialize_redmine
-def testing(request):
+def testing(request, redmine):
     if request.method == "GET":
         try:
             connection = mysql.connector.connect(
