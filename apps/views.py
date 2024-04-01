@@ -27,10 +27,8 @@ def login(request):
     if request.method == "GET":
         if request.session.get('username') and request.session.get('password'):
             print('a')
-            # If session exists, redirect to another function
             return redirect('index')
         else:
-            print('b')
             return render(request, 'login.html')
     else:
         print('b kah')
@@ -44,10 +42,10 @@ def login(request):
             redmine.user.get('current')
             request.session['username'] = username
             request.session['password'] = password
-            # print(username, password)
+       
             return redirect('index')
         except AuthError:
-            # Handle authentication error
+           
             error_message = "Invalid username or password. Please try again!"
             messages.error(request, error_message)
             return render(request, 'login.html', {'error_message': error_message})
@@ -843,8 +841,8 @@ def newissue(request, redmine):
         })
     else:
         new = redmine.issue.new()
-        
-        new.project_id = request.POST['id']
+        id = request.POST['id']
+        new.project_id = id
         new.subject = request.POST['subject']
         new.description = request.POST['description']
 
@@ -857,7 +855,21 @@ def newissue(request, redmine):
         new.assigned_to_id = request.POST['assigned_to']
         responsible = request.POST.getlist('responsible[]')
         department = request.POST.getlist('department[]')
+        
+        if responsible:
+                for user_id in responsible:
+                    try:
+                        new_membership = redmine.project_membership.new()
+                        new_membership.project_id = id
+                        new_membership.user_id = user_id
+                        new_membership.role_ids = [6]  # Assuming 6 is the role ID for the desired role
+                        new_membership.save()
+                    except:
+                        pass
+
         new.custom_fields=[{'id':4, 'value':responsible}]
+
+
         new.custom_fields=[{'id':11, 'value':department}]
         new.estimated_hours = request.POST['estimated_hours']
         new.start_date = request.POST['start_date']
@@ -916,6 +928,18 @@ def updateissue(request,id, redmine):
         update.assigned_to_id = request.POST['assigned_to']
         responsible = request.POST.getlist('responsible[]')
         print(responsible)
+        p = redmine.issue.get(id)
+        p = p.project
+        if responsible:
+                for user_id in responsible:
+                    try:
+                        new_membership = redmine.project_membership.new()
+                        new_membership.project_id = p
+                        new_membership.user_id = user_id
+                        new_membership.role_ids = [6]  # Assuming 6 is the role ID for the desired role
+                        new_membership.save()
+                    except:
+                        pass
         update.custom_fields=[{'id':4, 'value':responsible}]
     
         update.estimated_hours = request.POST['estimated_hours']
@@ -1005,9 +1029,9 @@ def testing(request, redmine):
 
             # Define the SQL query
             query = [
-                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND start_date = %s",
-                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND start_date <= %s AND %s <= due_date",
-                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND due_date = %s",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND start_date = %s AND projects.status !=5",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND start_date <= %s AND %s <= due_date AND projects.status !=5",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND due_date = %s AND projects.status !=5",
 
             ]
             today_date = date.today()
@@ -1022,6 +1046,7 @@ def testing(request, redmine):
                 cursor.execute(queries,params)
                 rows=cursor.fetchall()
                 results.append(rows)
+            print(results)
             startselected_tasks = results[0]
             between_tasks = results[1]
             dueselected_tasks = results[2]
@@ -1037,7 +1062,9 @@ def testing(request, redmine):
                         "project_id": row[2],
                         "project_name": row[3],
                         "start_date": row[4],
-                        "due_date": row[5]
+                        "due_date": row[5],
+                        "author_id" : row[6]
+                        
                     }
                     for row in i
                 ]
@@ -1045,9 +1072,9 @@ def testing(request, redmine):
             between_tasks = convert(between_tasks)
             dueselected_tasks = convert(dueselected_tasks)
 
-            print(startselected_tasks)
-            print(between_tasks)
-            print(dueselected_tasks)
+            print('start today :', startselected_tasks)
+            print('on progress :',between_tasks)
+            print('due today :',dueselected_tasks)
         
             # query = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'projects'"
             # query = "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE'"
@@ -1071,55 +1098,88 @@ def testing(request, redmine):
                 print('Connection to MySQL database closed')
 
         def email(list):
+            clean = []
             for item in list:
                 get_issue = redmine.issue.get(item['id'])
                 if get_issue.custom_fields[0]['value']:
                     for i in get_issue.custom_fields[0]['value']:
                         user = models.user.objects.get(id=int(i))
-                        item['name'] = user.name
-                        item['email'] = user.email
+                        get_author = models.user.objects.get(id=item['author_id'])
+                        user_info = {
+                            'id': item['id'],
+                            'subject': item['subject'],
+                            'project_id': item['project_id'],
+                            'project_name': item['project_name'],
+                            'start_date': item['start_date'],
+                            'due_date': item['due_date'],
+                            'author_email' : get_author.email,
+                            'author_name' : get_author.name,
+                            'name': user.name,
+                            'email': user.email
+                            }
+                        clean.append(user_info)
+                       
                     if list is startselected_tasks:
                         print("starts")
                         body = f"""
-                        Dear {item['name']},
+                        Dear {user.name},
 
-                        You have a task that started today and  will be due on {item['due_date']} from {item['project_name']}
-                        with task subject : {item['subject']}
+                        You have a task that started today and  will be due on {item['due_date']} from {item['project_name']} Project
+                        with task subject : {item['subject']}.
+
+                        View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
+
+                        Regards,
+                        {get_author.name}
                         """
+          
                     elif list is between_tasks:
                         print("between")
                         body = f"""
-                        Dear {item['name']},
+                        Dear {user.name},
 
                         You still have a running task that started from {item['start_date']} and will be due on {item['due_date']}
-                        from {item['project_name']} with task subject : {item['subject']}
+                        from {item['project_name']} Project with task subject : {item['subject']}.
+
+                        View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
+
+                        Regards,
+                        {get_author.name}
                         """
+                 
                     else:
                         print("last")
                         body = f"""
                         
-                        Dear {item['name']},
+                        Dear {user.name},
 
-                        You have a task that will be due today on {item['due_date']} from {item['project_name']}
+                        You have a task that will be due today on {item['due_date']} from {item['project_name']} Project
                         with task subject : {item['subject']}
 
+                        View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
+
+                        Regards,
+                        {get_author.name}
 
                         """
-                    email_api = "http://10.24.7.70:3333/send-email"
-                    payload = {
-                        "to": [item['email']],
-                        "subject": f"#{item['id']} [{item['subject']}] Task Reminder",
-                        "body": body
-                    }
+                    
+                    for i in clean:
+                        email_api = "http://10.24.7.70:3333/send-email"
+                        payload = {
+                            "to": [i['email']],
+                            "cc" : [i['author_email']],
+                            "subject": f"#{i['id']} [{i['subject']}] Task Reminder",
+                            "body": body
+                        }
 
-                    # print(payload)
-                    # response = requests.post(email_api, json = payload)
+                        print(payload)
+                        # response = requests.post(email_api, json = payload)
 
-                    # if response.status_code == 200:
-                    #     print("Email sent successfully.")
-                    # else:
-                    #     print(f"Failed to send email. Status code: {response.status_code}")
-                    #     print(response.text)  # Print the response content for debugging
+                        # if response.status_code == 200:
+                        #     print("Email sent successfully.")
+                        # else:
+                        #     print(f"Failed to send email. Status code: {response.status_code}")
+                        #     print(response.text)  # Print the response content for debugging
                 else:
                     print('gaada')
                     break
