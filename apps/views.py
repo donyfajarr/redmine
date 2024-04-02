@@ -1,4 +1,5 @@
 from django.shortcuts import render,redirect
+from django.template.response import render_to_response
 from redminelib import Redmine
 from redminelib.exceptions import AuthError
 import ssl
@@ -575,18 +576,18 @@ def confirmation (request, name, redmine):
                 # THE ['name'] IS USE TO HANDLE A MULTIPLE FORM FOR A MULTIPLE TASK THAT WILL BE PROCCESSED
                 
                 id = name
-                form_name = f'name_{item['name']}'
-                form_description = f'description_{item['name']}'
-                form_start_date = f'start_date_{item['name']}'
-                form_due_date = f'due_date_{item['name']}'
-                form_assigned_to = f'assigned_to_{item['name']}'
-                form_department = f'department_{item['name']}[]'
-                form_responsible = f'responsible_{item['name']}[]'
-                form_status= f'status_{item['name']}'
-                form_priority = f'priority_{item['name']}'
-                form_estimated_hours = f'estimated_hours_{item['name']}'
-                form_done_ratio = f'done_ratio_{item['name']}'
-                form_parent = f'parenttask_{item['name']}'
+                form_name = f"name_{item['name']}"
+                form_description = f"description_{item['name']}"
+                form_start_date = f"start_date_{item['name']}"
+                form_due_date = f"due_date_{item['name']}"
+                form_assigned_to = f"assigned_to_{item['name']}"
+                form_department = f"department_{item['name']}[]"
+                form_responsible = f"responsible_{item['name']}[]"
+                form_status= f"status_{item['name']}"
+                form_priority = f"priority_{item['name']}"
+                form_estimated_hours = f"estimated_hours_{item['name']}"
+                form_done_ratio = f"done_ratio_{item['name']}"
+                form_parent = f"parenttask_{item['name']}"
                 parent = request.POST.get(form_parent)
                 subject = request.POST.get(form_name)
                 start_date = request.POST.get(form_start_date)
@@ -928,6 +929,17 @@ def newissue(request, redmine):
         new.done_ratio = request.POST['done_ratio']
         new.save()
         return redirect('listproject')
+    
+def handler404(request, exception, template_name='404.html'):
+    response = render_to_response(template_name)
+    response.status_code = 404
+    return response
+
+def handler500(request,template_name='500.html'):
+    response = render_to_response(template_name)
+    response.status_code = 500
+    return response
+
 @check_login_session
 @initialize_redmine
 def updateissue(request,id, redmine):

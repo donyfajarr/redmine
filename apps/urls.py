@@ -17,5 +17,5 @@ urlpatterns = [
     path('addrelation/<str:id>', views.addrelations, name='addrelation'),
     path('testing', views.testing, name='testing'),
     path('', views.login, name='login'),
-    path('logout', views.logout, name='logout')
+    path('logout', views.logout, name='logout'),
 ]
