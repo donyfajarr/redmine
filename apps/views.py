@@ -522,8 +522,6 @@ def confirmation (request, name, redmine):
             process_tasks(tasks_data)
             user = redmine.user.get('current')
             request.session['forprint'] = forprint
-            # for item in forprint:
-            #     print(item)
             request.session['name'] = name
 
             return render (request, 'confirmation.html', {
@@ -615,7 +613,7 @@ def confirmation (request, name, redmine):
                         new_membership = redmine.project_membership.new()
                         new_membership.project_id = name
                         new_membership.user_id = user_id
-                        new_membership.role_ids = [6]  # Assuming 6 is the role ID for the desired role
+                        new_membership.role_ids = [6]  
                         new_membership.save()
                     except:
                         pass
@@ -936,7 +934,7 @@ def updateissue(request,id, redmine):
                         new_membership = redmine.project_membership.new()
                         new_membership.project_id = p
                         new_membership.user_id = user_id
-                        new_membership.role_ids = [6]  # Assuming 6 is the role ID for the desired role
+                        new_membership.role_ids = [6]  
                         new_membership.save()
                     except:
                         pass

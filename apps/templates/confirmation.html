@@ -340,8 +340,8 @@
                               aria-label="Multiple select example"
                             >
                               {% for i in alluser %}
-                                <!-- <option value="{{i.id}}">{{i.name}}</option> -->
-                                <option value="{{ i.id }}" {% if i.name in item.person %}selected{% endif %}>{{ i.name }}</option>
+                                
+                                <option value="{{ i.id }}" {% if i.email in item.person %}selected{% endif %}>{{ i.name }}</option>
                               {% endfor %}
                             </select>
                           
