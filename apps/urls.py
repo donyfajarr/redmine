@@ -10,6 +10,7 @@ urlpatterns = [
     path('listdetails/<str:id>', views.listdetails, name='listdetails'),
     path('updateissue/<str:id>', views.updateissue, name='updateissue'),
     path('deleteissue/<str:id>', views.deleteissue, name='deleteissue'),
+    path('export/<str:id>', views.export, name='export'),
     path('newissue', views.newissue, name='newissue'),
     path('newproject', views.newproject, name='newproject'),
     path('confirmation/<str:name>', views.confirmation, name='confirmation'),

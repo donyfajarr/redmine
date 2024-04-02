@@ -178,7 +178,7 @@
                         <div class="card-body">
                           <h5 class="card-title text-primary">Hello, {{name}}! 🎉</h5>
                           <p class="mb-4">
-                            You have <span class="fw-bold">{{sum}}</span> project under your control. Keep up your good work and always maintain it wisely!
+                            You have <span class="fw-bold">{{len_project}}</span> project under your control. Keep up your good work and always maintain it wisely!
                           </p>
 
                           <a href="{% url 'listproject' %}" class="btn btn-sm btn-outline-primary">View Projects</a>
@@ -204,7 +204,7 @@
                     <div class="card-header d-flex align-items-center justify-content-between pb-0">
                       <div class="card-title mb-0">
                         <h5 class="m-0 me-2">Latest Task</h5>
-                        <small class="text-muted">{{p}} Total task due</small>
+                        <small class="text-muted">{{len_task}} Total task due</small>
                       </div>
                   
                     </div>

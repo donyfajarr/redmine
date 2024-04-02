@@ -10,28 +10,28 @@ from django.http import JsonResponse
 import requests
 from .decorators import check_login_session, initialize_redmine
 from django.contrib import messages
+from django.http import HttpResponse
+import os
 
 ssl._create_default_https_context = ssl._create_unverified_context
 # key = "a435e1173a8238a1fb5fd6d07bc8042c901abbfd"
+
+# ACCESS TO REDMINE, USED IN DECORATORS
 # redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', key=key, requests={'verify': False,})
+# redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', username=username, password=password, requests={'verify': False,})
 
+# STORE USERS AS EMPTY 
 users = []
-# Create your views here.
-# def initialize_redmine(username,password ):
-#     global redmine
-#     redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', username=username, password=password, requests={'verify': False,})
 
-
+# LOGIN
 def login(request):
-    global redmine
     if request.method == "GET":
+        # FIND SESSION FROM RECENT LOGIN
         if request.session.get('username') and request.session.get('password'):
-            print('a')
             return redirect('index')
         else:
             return render(request, 'login.html')
     else:
-        print('b kah')
         username = request.POST['username']
         password = request.POST['password']
         try:
@@ -39,19 +39,24 @@ def login(request):
                                     username=username, 
                                     password=password, 
                                     requests={'verify': False})
+            # TEST AUTH ACCESS
             redmine.user.get('current')
+
+            # STORE INTO SESSION FOR CACHING
             request.session['username'] = username
             request.session['password'] = password
        
             return redirect('index')
+        
+        # WRONG USERNAME/PASSWORD HANDLER
         except AuthError:
-           
             error_message = "Invalid username or password. Please try again!"
             messages.error(request, error_message)
             return render(request, 'login.html', {'error_message': error_message})
-    
+
+# LOGOUT
 def logout(request):
-    global redmine
+    # DELETE SESSION TO LOGOUT
     del request.session['username']
     del request.session['password']
     return redirect ('login')
@@ -60,11 +65,12 @@ def logout(request):
 @check_login_session
 @initialize_redmine
 def index(request, redmine):
-    print(redmine)
     users = redmine.user.get('current')
     user = users.id
     listproject = []
     selected_tasks = []
+
+    # SELECT ALL PROJECT THAT AUTHORIZED BY ME AND APPEND IT ON LISTPROJECT
     try:
         connection = mysql.connector.connect(
             host='10.58.1.2',
@@ -76,7 +82,6 @@ def index(request, redmine):
         if connection.is_connected():
             print('Connected to MySQL database')
 
-        # Create a cursor object
         cursor = connection.cursor()
         query1 = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC "
         today_date = date.today() + timedelta(days=3)
@@ -90,13 +95,14 @@ def index(request, redmine):
                 list['id'] = row[0]
                 list['name'] = row[1]
                 listproject.append(list)
-        
-        query2 = "SELECT issues.id, issues.subject, issues.due_date, issues.project_id, projects.name FROM issues JOIN projects ON issues.project_id = projects.id WHERE author_id = %s AND projects.status !=5 AND due_date <= %s"
+        len_project = len(listproject)
 
+        # SELECT REMAINING TASK THAT ASSIGNED BY ME LAST 5 WITH THE CLOSEST DUE DATE
+        query2 = "SELECT issues.id, issues.subject, issues.due_date, issues.project_id, projects.name FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND projects.status !=5 AND due_date <= %s"
+    
         cursor.execute(query2, (author_id, start_date))
         rows2 = cursor.fetchall()
-        p = len(rows2)
-        print(p)
+        len_task = len(rows2)
         if rows2:
             for row in rows2:
                 task_info = {
@@ -106,6 +112,8 @@ def index(request, redmine):
                 'due_date' : row[2]
                 }
                 selected_tasks.append(task_info)
+                
+                # ONLY 3 TASKS
                 if len(selected_tasks) == 3:
                     break
         else:
@@ -121,17 +129,17 @@ def index(request, redmine):
             connection.close()
             print('Connection to MySQL database closed')
 
-    sum = len(listproject)
+    # CLICK IN REMAINING TASK
     if request.method == "POST":
         go = request.POST['go']
         return redirect ('listissue', id=str(go))
 
     return render(request,'index.html',{
         'selected_tasks' : selected_tasks,
-        'p' : p,
+        'len_task' : len_task,
         'name' : users['firstname'] +' ' + users['lastname'],
         'listproject' : listproject,
-        'sum' : sum
+        'len_project' : len_project
     }) 
 
 # PROJECT
@@ -141,6 +149,8 @@ def listproject(request, redmine):
     listproject = []
     users = redmine.user.get('current')
     user = users.id
+
+     # SELECT ALL PROJECTS WHERE USER IS A MEMBER AND APPEND INTO LIST PROJECT
     try:
         connection = mysql.connector.connect(
             host='10.58.1.2',
@@ -152,20 +162,17 @@ def listproject(request, redmine):
         if connection.is_connected():
             print('Connected to MySQL database')
 
-        # Create a cursor object
         cursor = connection.cursor()
-        query1 = "SELECT projects.name, projects.identifier FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC"
-        author_id = user
-        cursor.execute(query1, (author_id,))
-        rows1 = cursor.fetchall()
-        if rows1:
-            for row in rows1:
+        query = "SELECT projects.name, projects.identifier FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC"
+        cursor.execute(query, (user,))
+        rows = cursor.fetchall()
+        if rows:
+            for row in rows:
+                # 0 IS PROJECT_NAME, 1 IS PROJECT_ID
                 list = []
                 list.append(row[0])
                 list.append(row[1])
                 listproject.append(list)
-                # print(row)
-        
         else:
             print("No rows found matching the criteria.")
 
@@ -181,6 +188,7 @@ def listproject(request, redmine):
     return render(request, 'listproject.html',{
         'listproject' : listproject
     })
+
 @check_login_session
 @initialize_redmine
 def updateproject(request,id, redmine):
@@ -195,6 +203,8 @@ def updateproject(request,id, redmine):
         update.is_public = eval(request.POST['is_public'])
         update.save()
         return redirect('listproject')
+    
+
 @check_login_session
 @initialize_redmine
 def newproject(request, redmine):
@@ -202,6 +212,7 @@ def newproject(request, redmine):
     new = redmine.project.new()
     users = redmine.user.get('current')
     user = users.id
+    # SELECT ALL PROJECTS THAT USER IS A MEMBER FOR ALL PROJECTS DROPDOWN
     try:
         connection = mysql.connector.connect(
             host='10.58.1.2',
@@ -213,21 +224,16 @@ def newproject(request, redmine):
         if connection.is_connected():
             print('Connected to MySQL database')
 
-        # Create a cursor object
         cursor = connection.cursor()
-        query1 = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC"
-        author_id = user
-        cursor.execute(query1, (author_id,))
-        rows1 = cursor.fetchall()
-        print(len(rows1))
-        if rows1:
-            for row in rows1:
+        query = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC"
+        cursor.execute(query, (user,))
+        rows = cursor.fetchall()
+        if rows:
+            for row in rows:
                 list = {}
                 list['id'] = row[0]
                 list['name'] = row[1]
                 listproject.append(list)
-                # print(row)
-        
         else:
             print("No rows found matching the criteria.")
 
@@ -247,40 +253,52 @@ def newproject(request, redmine):
         })
     elif request.method == "POST":
         new.name = request.POST['name']
+
+        # HANDLER REMOVE SPACE IN NAME FOR PROJECT IDENTIFIER
         if " " in request.POST['name']:
             name = request.POST['name'].replace(" ", "")
             new.identifier = name
         else:
             new.identifier = request.POST['name']
+
         new.description = request.POST['description']
         new.is_public = eval(request.POST['is_public'])
+
+        # HANDLER IF USER INPUT A PARENT PROJECT
         if request.POST['parent'] == "kosong":
             pass
         else:
             new.parent_id = request.POST['parent']
+
         new.save()
         return redirect ('confirmation', name=request.POST['name'])
+    
 @check_login_session
 @initialize_redmine
 def confirmation (request, name, redmine):
     
     if request.method == 'POST':
+        # STATUS, DEPT, USER, AND PRIORITY IS STORED IN LOCAL DB TO FASTEN THE DROPDOWN LOAD
         allstatus = models.status.objects.all()
         alldept = models.dept.objects.all()
         alluser = models.user.objects.all()
         allpriority = models.priority.objects.all()
+
         forprint = list()
         if 'upload' in request.POST:
+            # LOAD XLSX
             files = request.FILES['filea']
             wb = load_workbook(files)
             ws = wb.active
+            
+            # START GANTT CHART ROW
             start_row = 5
-            # jadi input di htmlnya
-            # col3_idx = {}
+
+            # STORED COLUMN VALUES
+            col2_idx  = {}
+            col2_values = []
             col3_values = []
             col4_values = []
-            col2_values = []
-            col2_idx  = {}
             col5_values = []
             col6_values = []
             taskx = []
@@ -296,27 +314,33 @@ def confirmation (request, name, redmine):
                     return start_date, end_date
                 if week_end is None:
                     start_date, end_date = calculate_week_dates(week_start)
-                    return [(start_date, end_date)]  # Return a list containing a single tuple
+                    return [(start_date, end_date)] 
                 elif week_start is not None and week_end is not None and week_end >= week_start:
                     start_date = calculate_week_dates(week_start)[0]
                     end_date = calculate_week_dates(week_end)[1]
                     return [(start_date, end_date)]
                 else:
                     return []
+                
             def find_col_with_filled_color(ws, row_index):
                 filled_cells = []
+                # 9 STATE THE COLUMN GANTT CHART STARTED
                 for col_index in range(9, ws.max_column + 1):
                     cell = ws.cell(row=row_index, column=col_index)
-                    
                     if isinstance(cell.fill.fgColor.theme, int) or (cell.fill.fgColor.rgb != 'FFFF0000' and  cell.fill.fgColor.rgb !='00000000'):
                         findweek = ws.cell(4, col_index).value
                         filled_cells.append(findweek)
 
                 return filled_cells if filled_cells else None
             
+            # ITERATE COLUMN 2 AS A BASE
+
             for row_idx, (cell_value) in enumerate(ws.iter_rows(min_row=start_row,min_col=2,max_col=2, values_only=True), start=start_row):
                 col2_values.append(cell_value)
                 col2_idx[cell_value] = row_idx
+            
+            # ITERATE ROW FOR EVERY COLUMN TO GET THE VALUES
+                
             for row in ws.iter_rows(min_row=start_row, min_col=3, max_col=3, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
                 col3_values.append(cell_value)
@@ -337,6 +361,8 @@ def confirmation (request, name, redmine):
             temp2 = []
             temp3 = []
             temp4 = []
+
+            # ITERATE BASE ON COLUMN 2 AND CONTINUE INTO COLUMN 3, 4, etc AND SAVE IT ON CURRENT_TASK
             for idx, value in enumerate(col2_values):
                 if value[0] is not None:
     
@@ -371,6 +397,10 @@ def confirmation (request, name, redmine):
                     current_task = {'name': value[0], 'start_date':start_date, 'due_date':end_date, 'pic' : findpic, 'person': findperson, 'subtasks': {}, }
                     tasks_data.append(current_task)
                     temp = []
+                    
+                    # TEMP IS USED TO STORE A ISSUE THAT HAS A SUBTASKS AND NEED TO ITERATE INTO THE NEXT COLUMN
+                    # LATER THE TEMP IS BEING CLEANED IF THERE ARE NO LONGER ITERATION FOR THOSE COLUMN
+
                 elif current_task is not None:
                     subtask_value = col3_values[idx] if idx < len(col3_values) else None
                     
@@ -438,7 +468,7 @@ def confirmation (request, name, redmine):
                             add2 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson, 'subtasks' : {}}
                             temp2.append(add2)
                             add['subtasks'] = temp2
-                            # print(add2)
+                            
                         else:
                             temp2 = []  
                             subtask_value = col5_values[idx] if idx < len(col5_values) else None
@@ -511,7 +541,7 @@ def confirmation (request, name, redmine):
                 else:
                     pass
             
-          
+            # IT IS USED TO ATTACH A PARENT NAME KEYS FOR A SUBTASKS BASED ON A SUBTASKS THAT CONTAINED IN PARENT
             def process_tasks(tasks, parent_name=None):
                 for task in tasks:
                     task['Parent'] = parent_name
@@ -521,6 +551,9 @@ def confirmation (request, name, redmine):
 
             process_tasks(tasks_data)
             user = redmine.user.get('current')
+
+            # SESSION THE DATA TO BE PASSED INTO AFTER POST LOGIC
+
             request.session['forprint'] = forprint
             request.session['name'] = name
 
@@ -534,9 +567,13 @@ def confirmation (request, name, redmine):
                 'allpriority' : allpriority
             })
         else:
+            # IN THIS SECTION, THE DATA IS BEING CREATED INTO REDMINE DB
+            # GET THE SESSION
             forprint = request.session.get('forprint',[])
             name = request.session.get('name',[])
             def create_issue(item):
+                # THE ['name'] IS USE TO HANDLE A MULTIPLE FORM FOR A MULTIPLE TASK THAT WILL BE PROCCESSED
+                
                 id = name
                 form_name = f'name_{item['name']}'
                 form_description = f'description_{item['name']}'
@@ -565,13 +602,14 @@ def confirmation (request, name, redmine):
                 nama_parent = form_parent.split("_")
                 nama_parent = nama_parent[1]
                 create = redmine.issue.new()
+
+                # IF THERE IS A PARENT ON TASK
                 if parent is not None:
                     parent_issue_id = redmine.issue.filter(project_id = id, subject=parent)
                     for i in parent_issue_id:
-                        # print(i.id)
                         create.parent_issue_id = i.id
                 else:
-                    print('gamasuk')
+                    pass
                 create.project_id = id
                 create.subject=subject
                 create.description = description
@@ -586,11 +624,14 @@ def confirmation (request, name, redmine):
                 create.custom_fields=[{'id':4, 'value':responsible}]
                 create.save()
 
+            # STORED INTO DIFFERENT CONDITION ITEMS, SO THE PARENT IS THE ONE WHO REGISTERED FIRST
             first_condition_items = []
             second_condition_items = []
             last_condition_items = []
             all_responsible_users = []
 
+
+            # LOGIC TO ASSIGN A DIFFERENT CONDITION
             responsible2 = []
             for item in forprint:
                 responsible_users = request.POST.getlist(f'responsible_{item["name"]}[]')
@@ -607,6 +648,7 @@ def confirmation (request, name, redmine):
             flat = [item for sublist in responsible2 for item in sublist]
             all_responsible_users = list(set(flat))
 
+            # ADD A RESPONSIBLE AS A MEMBER FIRST
             if all_responsible_users:
                 for user_id in all_responsible_users:
                     try:
@@ -617,7 +659,8 @@ def confirmation (request, name, redmine):
                         new_membership.save()
                     except:
                         pass
-                
+            
+            # CREATE_ISSUE BASED ON THE CONDITION
             for item in first_condition_items:
                 create_issue(item)
             for item in second_condition_items:
@@ -647,15 +690,15 @@ def listissue(request,id, redmine):
         if connection.is_connected():
             print('Connected to MySQL database')
 
-        # Create a cursor object
+        # SELECT ALL ISSUES THAT ASSIGNED BY ME ON CERTAIN PROJECT
+            
         cursor = connection.cursor()
-        query1 = "SELECT issues.id, issues.subject, issues.status_id, users.firstname, users.lastname, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id JOIN users ON issues.assigned_to_id = users.id WHERE projects.identifier = %s AND projects.status !=5"
-        # query1 = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'users'"
-        cursor.execute(query1, (id,))
-        rows1 = cursor.fetchall()
-        if rows1:
-            for row in rows1:
-                print(row)
+        query = "SELECT issues.id, issues.subject, issues.status_id, users.firstname, users.lastname, issues.start_date, issues.due_date FROM issues JOIN projects ON issues.project_id = projects.id JOIN users ON issues.assigned_to_id = users.id WHERE projects.identifier = %s AND projects.status !=5"
+       
+        cursor.execute(query, (id,))
+        rows = cursor.fetchall()
+        if rows:
+            for row in rows:
                 list = []
                 list.append(row[0])
                 list.append(row[1])
@@ -667,6 +710,7 @@ def listissue(request,id, redmine):
                     pass
                 list.append(row[5])
                 list.append(row[6])
+                # 1 IS ISSUE_NAME, 2, IS ISSUE_STATUS, 3 + 4 IS FIRST_NAME + LAST_NAME, 5 IS START_DATE, 6 IS DUE_DATE
                 listissue.append(list)
         
         else:
@@ -685,17 +729,27 @@ def listissue(request,id, redmine):
     
     
     if request.method == "GET":
-        
         return render(request, 'listissue.html',{
         'listissue' : listissue,
         'id' : id
     })
 
-    elif request.method == "POST":
-        tes = redmine.issue.filter(project_id='master-project')
-        tes.export('csv', savepath='../redmine/', columns='all')    
-        return redirect('listissue')
-    
+@check_login_session
+@initialize_redmine
+def export(request, id, redmine):
+    tes = redmine.issue.filter(project_id=id)
+    file_path = tes.export('csv', savepath='../redmine/', columns='all')
+    with open(file_path, 'rb') as file:
+        csv_data = file.read()
+
+    # DELETE AFTER BEING READ
+    os.remove(file_path)
+
+    # DOWNLOAD POPUP
+    response = HttpResponse(csv_data, content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename=redmine_data_{id}.csv'
+    return response
+
 @check_login_session
 @initialize_redmine
 def listdetails(request,id, redmine):
@@ -711,26 +765,25 @@ def listdetails(request,id, redmine):
     dict['priority'] = get.priority
     dict['assigned_to'] = '-'
     
+    # GET RESPONSIBLE LIST AND JOIN WITH , IF THERE IS MULTIPLE
     try:
-        print('aman')
         if get.custom_fields[0]['value']:
             for i in get.custom_fields[0]['value']:
                 user = models.user.objects.get(id=int(i))
                 listresponsible.append(user.name)
             listresponsible = ', '.join(listresponsible)
             dict['responsible'] = listresponsible
-            print(listresponsible)
         else:
             dict['responsible'] = '-'
-        
     except:
         pass
+
     try:
         if dict['assigned_to']:
-            
             dict['assigned_to'] = get.assigned_to
     except:
         pass
+
     try:
         if get.custom_fields[7]['value']:
             for i in get.custom_fields[7]['value']:
@@ -741,7 +794,8 @@ def listdetails(request,id, redmine):
             dict['department'] = '-'
     except:
         pass
-    
+
+    # FIND RELATION IF AVAILABLE
     relation  = redmine.issue_relation.filter(issue_id = id)
     if relation:
         list = {}
@@ -761,7 +815,6 @@ def listdetails(request,id, redmine):
             relation_str += f"<a href='/listdetails/{issue_id}'>#{issue_id}</a> {relation_type} to <a href='/listdetails/{issue_to_id}'>#{issue_to_id}</a>, "
         relation_str = relation_str[:-2]
         dict['relation'] = relation_str
-
     else:
         dict['relation'] = '-'
 
@@ -775,6 +828,7 @@ def listdetails(request,id, redmine):
     return render(request, 'listdetails.html',{
         'dict' : dict
     })
+
 @check_login_session
 @initialize_redmine
 def newissue(request, redmine):
@@ -784,6 +838,8 @@ def newissue(request, redmine):
     allpriority = models.priority.objects.all()
     alluser = models.user.objects.all()
     listproject = []
+
+    # SELECT AVAILABLE PROJECT THAT USER IS A MEMBER TO BEING PARENT DROPDOWN
     try:
         connection = mysql.connector.connect(
             host='10.58.1.2',
@@ -795,15 +851,14 @@ def newissue(request, redmine):
         if connection.is_connected():
             print('Connected to MySQL database')
 
-        # Create a cursor object
+        
         cursor = connection.cursor()
-        query1 = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC "
-        today_date = date.today() + timedelta(days=3)
+        query = "SELECT projects.id, projects.name FROM projects JOIN members ON projects.id = members.project_id WHERE members.user_id = %s AND projects.status !=5 ORDER BY projects.name ASC "
         author_id = user.id
-        cursor.execute(query1, (author_id,))
-        rows1 = cursor.fetchall()
-        if rows1:
-            for row in rows1:
+        cursor.execute(query, (author_id,))
+        rows = cursor.fetchall()
+        if rows:
+            for row in rows:
                 list = {}
                 list['id'] = row[0]
                 list['name'] = row[1]
@@ -822,11 +877,7 @@ def newissue(request, redmine):
             connection.close()
             print('Connection to MySQL database closed')
 
-    # for i in redmine.project.all():
-    #     list = {}
-    #     list['name'] = i.name
-    #     list['id'] = i.identifier
-    #     listproject.append(list)
+
     if request.method == "GET":
         return render(request, 'newissue.html',{
             'all' : all,
@@ -840,41 +891,41 @@ def newissue(request, redmine):
     else:
         new = redmine.issue.new()
         id = request.POST['id']
-        new.project_id = id
-        new.subject = request.POST['subject']
-        new.description = request.POST['description']
 
-        p = request.POST['status']
-        getstatus = models.status.objects.get(id=p)
-        new.status_id = getstatus.id
-        pri = request.POST['priority']
-        getpriority = models.priority.objects.get(id=pri)
-        new.priority_id = getpriority.id
-        new.assigned_to_id = request.POST['assigned_to']
+        status = request.POST['status']
+        getstatus = models.status.objects.get(id=status)
+        
+        priority = request.POST['priority']
+        getpriority = models.priority.objects.get(id=priority)
+        
+        
         responsible = request.POST.getlist('responsible[]')
         department = request.POST.getlist('department[]')
         
+
         if responsible:
                 for user_id in responsible:
                     try:
                         new_membership = redmine.project_membership.new()
                         new_membership.project_id = id
                         new_membership.user_id = user_id
-                        new_membership.role_ids = [6]  # Assuming 6 is the role ID for the desired role
+                        new_membership.role_ids = [6]
                         new_membership.save()
                     except:
                         pass
 
+        new.project_id = id
+        new.subject = request.POST['subject']
+        new.description = request.POST['description']
+        new.status_id = getstatus.id
+        new.priority_id = getpriority.id
+        new.assigned_to_id = request.POST['assigned_to']
         new.custom_fields=[{'id':4, 'value':responsible}]
-
-
         new.custom_fields=[{'id':11, 'value':department}]
         new.estimated_hours = request.POST['estimated_hours']
         new.start_date = request.POST['start_date']
         new.due_date = request.POST['due_date']
-        # new.parent_issue_id = request.POST['parent']
         new.done_ratio = request.POST['done_ratio']
-        print('jalan')
         new.save()
         return redirect('listproject')
 @check_login_session
@@ -896,7 +947,6 @@ def updateissue(request,id, redmine):
         listdept.append(i)
     
     if request.method == "GET":
-        
         return render(request, 'updateissue.html',{
             'id' : id,
             'update' : update,
@@ -910,39 +960,40 @@ def updateissue(request,id, redmine):
             'listresponsible' : listresponsible
         })
     else:
-        update.subject = request.POST['subject']
-        p = request.POST['status']
-        getstatus = models.status.objects.get(id=p)
-        update.status_id = getstatus.id
-        update.description = request.POST['description']
-        department = request.POST.getlist('department[]')
-        update.custom_fields=[{'id':11,'value':department}]
-        update.start_date = request.POST['start_date']
-        update.due_date = request.POST['due_date']
-        pri = request.POST['priority']
-        getpriority = models.priority.objects.get(id=pri)
-        update.priority_id = getpriority.id
         
-        update.assigned_to_id = request.POST['assigned_to']
+        status = request.POST['status']
+        getstatus = models.status.objects.get(id=status)
+        priority = request.POST['priority']
+        getpriority = models.priority.objects.get(id=priority)
+
         responsible = request.POST.getlist('responsible[]')
-        print(responsible)
-        p = redmine.issue.get(id)
-        p = p.project
+        department = request.POST.getlist('department[]')
+
+        get = redmine.issue.get(id)
+        project = get.project
         if responsible:
                 for user_id in responsible:
                     try:
                         new_membership = redmine.project_membership.new()
-                        new_membership.project_id = p
+                        new_membership.project_id = project
                         new_membership.user_id = user_id
                         new_membership.role_ids = [6]  
                         new_membership.save()
                     except:
                         pass
+
+        update.subject = request.POST['subject']
+        update.status_id = getstatus.id
+        update.description = request.POST['description']
+        
+        update.custom_fields=[{'id':11,'value':department}]
+        update.start_date = request.POST['start_date']
+        update.due_date = request.POST['due_date']
+        update.priority_id = getpriority.id
+        update.assigned_to_id = request.POST['assigned_to']
         update.custom_fields=[{'id':4, 'value':responsible}]
-    
         update.estimated_hours = request.POST['estimated_hours']
         update.done_ratio = request.POST['done_ratio']
-
         update.save()
         return redirect('listdetails',id=id)
 @check_login_session
@@ -970,7 +1021,8 @@ def addrelations(request,id, redmine):
         target.save()
         return redirect ('listissue', id=id)
 
-    # SET REMINDER EMAIL
+
+# THIS FUNCTION IS USED TO GET AN AVAILABLE EMAIL TO BEING AUTO SCHEDULE IT EVERY MORNING
 @check_login_session
 @initialize_redmine
 def testing(request, redmine):

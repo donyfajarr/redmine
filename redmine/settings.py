@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-16l9t)k^fcc=nd4ln#hjg)^!2ke!@-ef@%p4-cb_qcgbv(7t#m
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['10.24.7.165', 'http://redmineapi.greenfieldsdairy.com/']
 
 
 # Application definition

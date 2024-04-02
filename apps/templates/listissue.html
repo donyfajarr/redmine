@@ -186,9 +186,11 @@
                 <!-- Basic Bootstrap Table -->
                 <div class="card">
                     <h5 class="card-header">Project Issue List</h5>
-                    
-                    <h5 class="card-header w-75 p-3"> <a href="{% url 'addrelation' id%}"><button class="btn btn-primary float-right">Add Relation</button></a></h5>
-                    <div class="table-responsive text-nowrap">
+                    <div class="d-flex justify-content-between">
+                      <h5 class="ms-4"><a href="{% url 'addrelation' id%}"><button class="btn btn-primary float-right">Add Relation</button></a></h5>
+                      <h5 class="me-4"><a href="{% url 'export' id%}"><button class="btn btn-warning float-right">Export into CSV</button></a></h5>
+                    </div>
+                     <div class="table-responsive text-nowrap">
                     <table class="table">
                         <thead>
                         <tr>
