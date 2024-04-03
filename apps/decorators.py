@@ -18,9 +18,7 @@ def initialize_redmine(view_func):
         
         username = request.session.get('username')
         password = request.session.get('password')
-        print('naah')
         if username and password:
-            print('asup')
             redmine = Redmine('https://redmine.greenfieldsdairy.com/redmine', 
                                 username=username, 
                                 password=password, 
