@@ -1033,47 +1033,46 @@ def addrelations(request,id, redmine):
         return redirect ('listissue', id=id)
 
 
+def register(request):
+    try:
+        connection = mysql.connector.connect(
+            host='10.58.1.2',
+            port='3307',
+            database='bitnami_redmine',
+            user='report',
+            password='mokondo12'
+        )
+        if connection.is_connected():
+            print('Connected to MySQL database')
+        cursor = connection.cursor()
+        query = "SELECT users.id, users.firstname, users.lastname, address FROM users JOIN email_addresses ON users.id = email_addresses.user_id"
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        models.user.objects.all().delete()
+        for row in rows:
+            id, firstname, lastname, email = row
+            try:
+                models.user.objects.create(id=id,name=firstname+ ' ' +lastname, email=email)
+            except:
+                print('not exists')
+    except mysql.connector.Error as e:
+        print(f'Error connecting to MySQL database: {e}')
+
+    finally:
+        # Close cursor and connection
+        if 'cursor' in locals():
+            cursor.close()
+        if 'connection' in locals() and connection.is_connected():
+            connection.close()
+            print('Connection to MySQL database closed')
+
+
+
 # THIS FUNCTION IS USED TO GET AN AVAILABLE EMAIL TO BEING AUTO SCHEDULE IT EVERY MORNING
 @check_login_session
 @initialize_redmine
 def testing(request, redmine):
     if request.method == "GET":
-        try:
-            connection = mysql.connector.connect(
-                host='10.58.1.2',
-                port='3307',
-                database='bitnami_redmine',
-                user='report',
-                password='mokondo12'
-            )
-            if connection.is_connected():
-                print('Connected to MySQL database')
-            cursor = connection.cursor()
-            query = "SELECT users.id, users.firstname, users.lastname, address FROM users JOIN email_addresses ON users.id = email_addresses.user_id"
-            cursor.execute(query)
-            rows = cursor.fetchall()
-            models.user.objects.all().delete()
-            for row in rows:
-                id, firstname, lastname, email = row
-                try:
-                    models.user.objects.create(id=id,name=firstname+ ' ' +lastname, email=email)
-                except:
-                    print('not exists')
-        except mysql.connector.Error as e:
-            print(f'Error connecting to MySQL database: {e}')
-
-        finally:
-            # Close cursor and connection
-            if 'cursor' in locals():
-                cursor.close()
-            if 'connection' in locals() and connection.is_connected():
-                connection.close()
-                print('Connection to MySQL database closed')
-
-
-
-        user = redmine.user.get('current')
-        user = user.id
         try:
             connection = mysql.connector.connect(
                 host='10.58.1.2',
@@ -1090,17 +1089,17 @@ def testing(request, redmine):
 
             # Define the SQL query
             query = [
-                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND start_date = %s AND projects.status !=5",
-                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND start_date <= %s AND %s <= due_date AND projects.status !=5",
-                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE assigned_to_id = %s AND due_date = %s AND projects.status !=5",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE start_date = %s AND projects.status !=5",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE start_date <= %s AND %s <= due_date AND projects.status !=5",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE due_date = %s AND projects.status !=5",
 
             ]
             today_date = date.today()
             start_date = date(today_date.year, today_date.month, today_date.day)
             params_list = [
-                (user, start_date),
-                (user, start_date, start_date),
-                (user, start_date)
+                (start_date,),
+                (start_date, start_date,),
+                (start_date,)
             ]
             results = []
             for queries, params in zip(query, params_list):
@@ -1136,16 +1135,10 @@ def testing(request, redmine):
             print('start today :', startselected_tasks)
             print('on progress :',between_tasks)
             print('due today :',dueselected_tasks)
-        
-            # query = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'projects'"
+            
+            # query = "SELECT value FROM custom_values WHERE custom_field_id=4 AND customized_id = idissue"
+            # query = "SELECT column_name FROM information_schema.columns WHERE table_schema='bitnami_redmine' AND table_name = 'custom_values'"
             # query = "SELECT table_schema, table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE'"
-            # cursor.execute(query)
-            # rows = cursor.fetchall()
-            # if rows:
-                # for row in rows:
-                #     print(row)
-            # else:
-                # print("No rows found matching the criteria.")
 
          
         except mysql.connector.Error as e:
@@ -1160,90 +1153,154 @@ def testing(request, redmine):
 
         def email(list):
             clean = []
-            for item in list:
-                get_issue = redmine.issue.get(item['id'])
-                if get_issue.custom_fields[0]['value']:
-                    for i in get_issue.custom_fields[0]['value']:
-                        user = models.user.objects.get(id=int(i))
-                        get_author = models.user.objects.get(id=item['author_id'])
-                        user_info = {
-                            'id': item['id'],
-                            'subject': item['subject'],
-                            'project_id': item['project_id'],
-                            'project_name': item['project_name'],
-                            'start_date': item['start_date'],
-                            'due_date': item['due_date'],
-                            'author_email' : get_author.email,
-                            'author_name' : get_author.name,
-                            'name': user.name,
-                            'email': user.email
-                            }
-                        clean.append(user_info)
-                       
-                    if list is startselected_tasks:
-                        print("starts")
-                        body = f"""
-                        Dear {user.name},
+            try:
+                connection = mysql.connector.connect(
+                    host='10.58.1.2',
+                    port='3307',
+                    database='bitnami_redmine',
+                    user='report',
+                    password='mokondo12'
+                )
+                if connection.is_connected():
+                    print('Connected to MySQL database')
 
-                        You have a task that started today and  will be due on {item['due_date']} from {item['project_name']} Project
-                        with task subject : {item['subject']}.
-
-                        View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
-
-                        Regards,
-                        {get_author.name}
-                        """
-          
-                    elif list is between_tasks:
-                        print("between")
-                        body = f"""
-                        Dear {user.name},
-
-                        You still have a running task that started from {item['start_date']} and will be due on {item['due_date']}
-                        from {item['project_name']} Project with task subject : {item['subject']}.
-
-                        View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
-
-                        Regards,
-                        {get_author.name}
-                        """
-                 
-                    else:
-                        print("last")
-                        body = f"""
-                        
-                        Dear {user.name},
-
-                        You have a task that will be due today on {item['due_date']} from {item['project_name']} Project
-                        with task subject : {item['subject']}
-
-                        View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
-
-                        Regards,
-                        {get_author.name}
-
-                        """
+                for item in list:
+                    # Create a cursor object
+                    cursor = connection.cursor()
+                    responsible_id = []
+                    query = "SELECT value FROM custom_values WHERE custom_field_id=4 AND customized_id = %s"
+                    params = (item['id'],)
+                    cursor.execute(query, params)
+                    rows = cursor.fetchall()
+                    if rows:
+                        for row in rows:
+                            if row == ('',):
+                                continue
+                            else:
+                                print('awal')
+                                responsible_id.append(row[0])
+                        print(responsible_id)
                     
-                    for i in clean:
-                        email_api = "http://10.24.7.70:3333/send-email"
-                        payload = {
-                            "to": [i['email']],
-                            "cc" : [i['author_email']],
-                            "subject": f"#{i['id']} [{i['subject']}] Task Reminder",
-                            "body": body
-                        }
+                    if responsible_id:
+                        for i in responsible_id:
+                            query3 = "SELECT a.firstname, a.lastname, b.address FROM users AS a JOIN email_addresses AS b ON a.id = b.user_id WHERE a.id=%s"
+                            params3 = (i,)
+                            cursor.execute(query3,params3)
+                            rows = cursor.fetchall()
+                            if rows:
+                                for row in rows:
+                                    responsible = {
+                                        'responsible_name' : row[0] + " " + row[1],
+                                        'responsible_email' : row[2]
+                                    }
+                                print(responsible)
 
-                        print(payload)
-                        # response = requests.post(email_api, json = payload)
+                            query2 = "SELECT a.firstname, a.lastname, b.address FROM users AS a JOIN email_addresses as b ON a.id = b.user_id WHERE a.id=%s"
+                            params2 = (item['author_id'],)
+                            cursor.execute(query2, params2)
+                            rows = cursor.fetchall()
+                            if rows:
+                                for row in rows:
+                                    print(row)
+                                    author = {
+                                        'author_name' : row[0] + " " + row[1],
+                                        'author_email' : row[2]
+                                    }
+                            
+                                user_info = {
+                                    'id': item['id'],
+                                    'subject': item['subject'],
+                                    'project_id': item['project_id'],
+                                    'project_name': item['project_name'],
+                                    'start_date': item['start_date'],
+                                    'due_date': item['due_date'],
+                                    'author_email' : author['author_email'],
+                                    'author_name' : author['author_name'],
+                                    'name': responsible['responsible_name'],
+                                    'email': responsible['responsible_email']
+                                    }
+                                clean.append(user_info)
+                                
+                                
+                                if list is startselected_tasks:
+                                    print("starts")
+                                    body = f"""
+                                    Dear {responsible['responsible_name']},
 
-                        # if response.status_code == 200:
-                        #     print("Email sent successfully.")
-                        # else:
-                        #     print(f"Failed to send email. Status code: {response.status_code}")
-                        #     print(response.text)  # Print the response content for debugging
-                else:
-                    print('gaada')
-                    break
+                                    You have a task that started today and  will be due on {item['due_date']} from {item['project_name']} Project
+                                    with task subject : {item['subject']}.
+
+                                    View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
+
+                                    Regards,
+                                    {author['author_name']}
+                                    """
+                        
+                                elif list is between_tasks:
+                                    print("between")
+                                    body = f"""
+                                    Dear {responsible['responsible_name']},
+
+                                    You still have a running task that started from {item['start_date']} and will be due on {item['due_date']}
+                                    from {item['project_name']} Project with task subject : {item['subject']}.
+
+                                    View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
+
+                                    Regards,
+                                    {author['author_name']}
+                                    """
+                                
+                                else:
+                                    print("last")
+                                    body = f"""
+                                    
+                                    Dear {responsible['responsible_name']},
+
+                                    You have a task that will be due today on {item['due_date']} from {item['project_name']} Project
+                                    with task subject : {item['subject']}
+
+                                    View more on : http://redmine.greenfieldsdairy.com/redmine/issues/{item['id']}
+
+                                    Regards,
+                                    {author['author_name']}
+
+                                    """
+                          
+
+                        for i in clean:
+                            email_api = "http://10.24.7.70:3333/send-email"
+                            payload = {
+                                "to": [i['email']],
+                                "cc" : [i['author_email']],
+                                "subject": f"#{i['id']} [{i['subject']}] Task Reminder",
+                                "body": body
+                            }
+
+                            print(payload)
+                            print('akhir')
+                            # response = requests.post(email_api, json = payload)
+
+                            # if response.status_code == 200:
+                            #     print("Email sent successfully.")
+                            # else:
+                            #     print(f"Failed to send email. Status code: {response.status_code}")
+                            #     print(response.text)  # Print the response content for debugging
+                     
+                    else:
+                        print('gaada')
+                        break
+                    responsible_id.clear()
+                    author.clear()
+                    responsible.clear()
+            except mysql.connector.Error as e:
+                print(f'Error connecting to MySQL database: {e}')
+
+            finally:
+                if 'cursor' in locals():
+                    cursor.close()
+                if 'connection' in locals() and connection.is_connected():
+                    connection.close()
+                    print('Connection to MySQL database closed')
 
         email(startselected_tasks)
         email(between_tasks)

@@ -24,9 +24,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-16l9t)k^fcc=nd4ln#hjg)^!2ke!@-ef@%p4-cb_qcgbv(7t#m'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_crontab',
     'apps',
 ]
 
@@ -83,7 +84,7 @@ DATABASES = {
 }
 
 CRONJOBS = [
-('0 8 * * *', 'apps.sql.my_cron_job')
+('0 8 * * *', 'apps.scheduled.schedule')
 ]
 
 # Password validation
@@ -125,6 +126,7 @@ STATIC_URL = 'static/'
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static')
 ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
