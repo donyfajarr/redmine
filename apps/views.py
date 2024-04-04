@@ -1089,7 +1089,7 @@ def register(request):
 
 # THIS FUNCTION IS USED TO GET AN AVAILABLE EMAIL TO BEING AUTO SCHEDULE IT EVERY MORNING
 @check_login_session
-def email(request):
+def send_email(request):
     if request.method == "GET":
         try:
             connection = mysql.connector.connect(

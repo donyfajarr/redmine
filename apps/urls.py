@@ -19,5 +19,5 @@ urlpatterns = [
     path('', views.login, name='login'),
     path('logout', views.logout, name='logout'),
     path('settings', views.settings, name='settings'),
-    path('email', views.email, name='email')
+    path('send_email', views.send_email, name='send_email')
 ]
