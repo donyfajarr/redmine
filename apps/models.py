@@ -24,7 +24,7 @@ class priority(models.Model):
         return str(self.name)
 class settings(models.Model):
     id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(user, on_delete=models.CASCADE)
+    user = models.IntegerField()
     gannt_start_column = models.IntegerField(default='9')
     week_number_row = models.IntegerField(default='4')
     start_row = models.IntegerField(default='5')
