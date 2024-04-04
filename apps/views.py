@@ -47,7 +47,49 @@ def login(request):
             # STORE INTO SESSION FOR CACHING
             request.session['username'] = username
             request.session['password'] = password
-       
+            
+            try:
+                connection = mysql.connector.connect(
+                    host='10.58.1.2',
+                    port='3307',
+                    database='bitnami_redmine',
+                    user='report',
+                    password='mokondo12'
+                )
+                if connection.is_connected():
+                    print('Connected to MySQL database')
+                cursor = connection.cursor()
+                query = "SELECT users.id, users.firstname, users.lastname, address FROM users JOIN email_addresses ON users.id = email_addresses.user_id"
+                cursor.execute(query)
+                rows = cursor.fetchall()
+                models.user.objects.all().delete()
+                for row in rows:
+                    id, firstname, lastname, email = row
+                    try:
+                        models.user.objects.create(id=id,name=firstname+ ' ' +lastname, email=email)
+                    except:
+                        print('not exists')
+            except mysql.connector.Error as e:
+                print(f'Error connecting to MySQL database: {e}')
+
+            finally:
+                # Close cursor and connection
+                if 'cursor' in locals():
+                    cursor.close()
+                if 'connection' in locals() and connection.is_connected():
+                    connection.close()
+                    print('Connection to MySQL database closed')
+            
+            users = redmine.user.get('current')
+            user = users.id
+            try:
+                getuser = models.user.objects.get(id=user)
+                models.settings.objects.get(user=getuser)
+            except ObjectDoesNotExist:
+                getuser = models.user.objects.get(id=user)
+                models.settings.objects.create(user=getuser)
+                
+
             return redirect('index')
         
         # WRONG USERNAME/PASSWORD HANDLER
