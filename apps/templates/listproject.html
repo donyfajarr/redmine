@@ -148,9 +148,16 @@
                 </a>
               </li>
               <li class="menu-item">
+                <a href="{% url 'settings' %}" class="menu-link">
+                  <i class="menu-icon tf-icons bx bx-cog"></i>
+                  <div data-i18n="Basic">Settings</div>
+                </a>
+              </li>
+
+              <li class="menu-item">
                 <a href="{% url 'logout' %}" class="menu-link">
-                  <i class="menu-icon tf-icons bx bx-power-off"></i>
-                  <div data-i18n="Basic">Logout</div>
+                  <i class="menu-icon tf-icons text-muted bx bx-power-off"></i>
+                  <div class="text-muted" data-i18n="Basic">Logout</div>
                 </a>
               </li>
           </ul>

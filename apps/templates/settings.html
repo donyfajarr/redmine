@@ -15,7 +15,7 @@
       content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
     />
 
-    <title>Import Project - Redmine Greenfields Manager</title>
+    <title>Project Settings - Greenfields Redmine Manager</title>
 
     <meta name="description" content="" />
 
@@ -115,7 +115,7 @@
                   </g>
                 </svg>
               </span>
-              <span class="app-brand-text demo menu-text fw-bolder ms-2">redmine</span>
+              <span class="app-brand-text demo menu-text fw-bolder ms-2">Redmine</span>
             </a>
 
             <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto d-block d-xl-none">
@@ -135,7 +135,7 @@
             </li>
 
             <!-- Layouts -->
-            <li class="menu-item active">
+            <li class="menu-item">
               <a href="{% url 'listproject' %}" class="menu-link">
                 <i class="menu-icon tf-icons bx bx-detail"></i>
                 <div data-i18n="Layouts">Project List</div>
@@ -147,7 +147,8 @@
                   <div data-i18n="Basic">Issues</div>
                 </a>
               </li>
-              <li class="menu-item">
+
+              <li class="menu-item active">
                 <a href="{% url 'settings' %}" class="menu-link">
                   <i class="menu-icon tf-icons bx bx-cog"></i>
                   <div data-i18n="Basic">Settings</div>
@@ -168,7 +169,7 @@
         <div class="layout-page">
           <!-- Navbar -->
 
-        
+          
 
           <!-- / Navbar -->
 
@@ -177,209 +178,86 @@
             <!-- Content -->
 
             <div class="container-xxl flex-grow-1 container-p-y">
-              <h4 class="fw-bold py-3 mb-4">Import Project</h4>
+              <h4 class="fw-bold py-3 mb-4"><span class="text-muted fw-light">Update Settings</h4>
 
               <!-- Basic Layout & Basic with Icons -->
               <div class="row">
                 <!-- Basic Layout -->
-                {% if request.method == 'GET' %}
                 <div class="col-xxl">
                   <div class="card mb-4">
                     <div class="card-header d-flex align-items-center justify-content-between">
-                      <h5 class="mb-0">Import Project</h5>
+                      <h5 class="mb-0">Update Settings</h5>
                     </div>
                     <div class="card-body">
-                      <form method="post" enctype="multipart/form-data">
+                      <form method="post" onsubmit="return validateForm()">
                         {% csrf_token %}
                         <div class="row mb-3">
-                            <label for="formFile" class="col-sm-2 col-form-label">XLSX Upload<a href="https://file-converter-online.com/"> (?)</a></label>
+                            <label class="col-sm-2 col-form-label" for="basic-default-name">Start Row</label>
                             <div class="col-sm-10">
-                                <input class="form-control" name="filea" type="file" accept=".xlsx"/>
+                              <input name="start_row" type="number" class="form-control" id="basic-default-name"value="{{dict.start_row}}"/>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                          <label class="col-sm-2 col-form-label" for="basic-default-name">Task Start Column</label>
+                          <div class="col-sm-10">
+                            <input name="start_column" type="number" class="form-control" id="basic-default-name"value="{{dict.start_column}}"/>
+                          </div>
+                        </div>
+                        <div class="row mb-3">
+                            <label class="col-sm-2 col-form-label" for="exampleFormControlTextarea1">Task End Column</label>
+                            <div class="col-sm-10">
+                                <input name="end_column" type="number" class="form-control" id="basic-default-name" value="{{dict.end_column}}" />
+                              </div>
+                        </div>
+                        <div class="row mb-3">
+                            <label class="col-sm-2 col-form-label" for="basic-default-name">Gannt Start Column</label>
+                            <div class="col-sm-10">
+                              <input name="gannt_start_column" type="number" class="form-control" id="basic-default-name"value="{{dict.gannt_start_column}}"/>
                             </div>
                           </div>
+                          <div class="row mb-3">
+                            <label class="col-sm-2 col-form-label" for="basic-default-name">Week Number Row</label>
+                            <div class="col-sm-10">
+                              <input name="week_number_row" type="number" class="form-control" id="basic-default-name"value="{{dict.week_number_row}}"/>
+                            </div>
+                          </div>
+                        <div class="row mb-3">
+                            <label class="col-sm-2 col-form-label" for="exampleFormControlTextarea1">PIC Column</label>
+                            <div class="col-sm-10">
+                                <input name="pic_column" type="number" class="form-control" id="basic-default-name" value="{{dict.pic_column}}"/>
+                              </div>
+                        </div>
+                        <div class="row mb-3">
+                            <label class="col-sm-2 col-form-label" for="defaultSelect">Email Column<a href="https://bettersolutions.com/excel/rows-columns/letters-to-numbers.htm"> (?)</a></label>
+                            <div class="col-sm-10">
+                                <input name="email_column" type="number" class="form-control" id="basic-default-name" value="{{dict.email_column}}"/>
+                              </div>
+                        </div>
                        
                         <div class="row justify-content-end">
                           <div class="col-sm-10">
-                            <button type="submit" name='upload' value='upload' class="btn btn-primary">Send</button>
-                            <a href="{% url 'listproject' %}" class="btn btn-warning custom-margin">Skip</a>
-                              <style>
-                                .custom-margin {
-                                  margin-left: 20px; /* Adjust the margin as needed */
-                                }
-                              </style>
-                            </a>
+                          <button type="submit" class="btn btn-primary">Update</button>
                           </div>
                         </div>
                       </form>
                     </div>
                   </div>
+                  <p>Project file example</p><img align="center" class="col-xl "height="300" src="{% static 'assets/img/example.png' %}" alt="">
                 </div>
-                {% elif request.method == 'POST' %}
-                <div class="row">
-                    <div class="col-xl">
-                    <div class="card mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Confirmation Page</h5>
-                        
-                        </div>
-                        
-                        <div class="card-body">
-                        <form method="post">
-                            {% csrf_token %}
-                            {% for item in tasks_data %}
-                            <div class="mb-3">
-                                <label class="form-label" for="basic-default-fullname">Issue Name</label>
-                                <input type="text" class="form-control" name="name_{{item.name}}" value="{{item.name}}" id="basic-default-fullname" />
-                            </div>
-                            <div class="mb-3">
-                              <label class="form-label" for="basic-default-name">Status</label>
-                                
-                                  <select name="status_{{item.name}}" class="form-select" id="exampleFormControlSelect1" aria-label="Default select example">
-                                    {% for i in allstatus %}
-                                    {% if i.name == "New" %}
-                                    <option selected value="{{i.id}}">{{i.name}}</option>
-                                    {% else %}
-                                    <option value="{{i.id}}">{{i.name}}</option>
-                                    {% endif %}
-                                    {% endfor %}
-                                  </select>
-                                
-                          </div>
-                            <div class="mb-3">
-                                <label class="form-label" for="basic-default-message">Description</label>
-                                <textarea
-                                id="basic-default-message"
-                                class="form-control"
-                                name="description_{{item.name}}"
-                                placeholder="Put your description here.."
-                                ></textarea>
-                            </div>
-                            {% if item.Parent %}
-                            <div class="mb-3">
-                              <label class="form-label" for="basic-default-name">Parent Task</label>
-                              
-                                <input name="parenttask_{{item.name}}"
-                                value = "{{item.Parent}}"
-                                class="form-control"
-                                type="text"
-                                id="exampleFormControlReadOnlyInput1"
-                                placeholder="{{item.Parent}}"
-                                readonly
-                              />
-                              
-                        
-                            {% endif %}
-                      
-                            <div class="mb-3">
-                                <label for="defaultSelect" class="form-label">Assigned To</label>
-                                <select id="defaultSelect" class="form-select" name="assigned_to_{{item.name}}">
-                                  {% for item in alluser %}
-                                  {% if item.id == user.id %}
-                                  <option selected value="{{item.id}}">{{item.name}}</option> 
-                                  {% else %}
-                                  <option value="{{item.id}}">{{item.name}}</option>
-                                  {% endif %}
-                                  {% endfor %}
-                                </select>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label for="defaultSelect" class="form-label">PIC</label>
-                                <select id="defaultSelect" class="form-select">
-                                    <!-- INI BELUM DIKASIH OPSI DEPARTEMEN YANG ADA SEMENTARA DIKASIH CURRENT USER -->
-                                <option name="pic_{{item.name}}" value="{{item.pic}}">{{item.pic}}</option>
-                                </select>
-                            </div>
-                            
-                            <div class="mb-3">
-                              <label class="form-label" for="basic-default-name">Department</label>
-                                
-                                  <select
-                                  multiple
-                                  class="form-select"
-                                  id="exampleFormControlSelect2"
-                                  aria-label="Multiple select example"
-                                  name="department_{{item.name}}[]"
-                                >
-                                  {% for department in alldept %}
-                                    <option value="{{ department.name }}" {% if department.name in item.pic %}selected{% endif %}>{{ department.name }}</option>
-                                  {% endfor %}
-                                </select>
-                              
-                                
-                          
-                            </div>
-                            <div class="mb-3">
-                              <label for="html5-date-input" class="form-label">Start Date</label>
-                              
-                              <input class="form-control" type="date" name="start_date_{{item.name}}" value="{{item.start_date}}" id="html5-date-input" />
-                          
-                          </div>
-                          <div class="mb-3">
-                              <label for="html5-date-input" class="form-label">Due Date</label>
-                          
-                              <input class="form-control" type="date" name="due_date_{{item.name}}" value="{{item.due_date}}" id="html5-date-input" />
-                              
-                          </div>  
-                          <div class="mb-3">
-                            <label class="form-label" for="basic-default-name">Priority</label>
-                              
-                                <select name="priority_{{item.name}}" class="form-select" id="exampleFormControlSelect1" aria-label="Default select example">
-                                  {% for i in allpriority %}
-                                  {% if i.name == "Normal" %}
-                                  <option selected value="{{i.id}}">{{i.name}}</option>
-                                  {% else %}
-                                  <option value="{{i.id}}">{{i.name}}</option>
-                                  {% endif %}
-                                  {% endfor %}
-                                </select>
-                             
-                        </div>
-                 
-                        <div class="mb-3">
-                          <label class="col-sm-2 col-form-label" for="basic-default-name">Responsible</label>
-                           
-                              <select
-                              name="responsible_{{item.name}}[]"
-                              multiple
-                              class="form-select"
-                              id="exampleFormControlSelect2"
-                              aria-label="Multiple select example"
-                            >
-                              {% for i in alluser %}
-                                
-                                <option value="{{ i.id }}" {% if i.email in item.person %}selected{% endif %}>{{ i.name }}</option>
-                              {% endfor %}
-                            </select>
-                          
-                       
-                        </div>
-                        <div class="mb-3">
-                            <label class="col-sm-2 col-form-label" for="basic-default-name">Estimated Hours</label>
-                              
-                                <input name="estimated_hours_{{item.name}}" class="form-control" type="number" id="html5-number-input" />
-                        
-                        </div>
-                        <div class="mb-3">
-                            <label class="col-sm-2 col-form-label" for="basic-default-name">Done Ratio (%)</label>
-                              
-                                <input name="done_ratio_{{item.name}}" class="form-control" type="number" value="0" id="html5-number-input" />
-                        
-                        </div>
-                        <div class="mb-3 border-bottom">
-                          <h1>--------------------------------------------------------------------</h1>
-                        </div>
-                            {% endfor %}
-                          </div>
-                        </div>
-                            <button type="submit" name='fix' value='fix' class="btn btn-primary">Send</button>
-                        </form>
-                        
-                       
-                    
-                    </div>
-                {% endif %}
-                    
+                
+                <script>
+                    function validateForm() {
+                        var startColumnValue = parseInt(document.getElementsByName("start_column")[0].value);
+                        var endColumnValue = parseInt(document.getElementsByName("end_column")[0].value);
+
+                        if (endColumnValue > (startColumnValue + 4)) {
+                            alert("Task column hanya bisa dilakukan dalam range 5 kolom.");
+                            return false; 
+                        }
+                        return true; 
+                    }
+                </script>
+                   
             <!-- / Content -->
 
             <!-- Footer -->

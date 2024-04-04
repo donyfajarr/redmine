@@ -12,6 +12,7 @@ from .decorators import check_login_session, initialize_redmine
 from django.contrib import messages
 from django.http import HttpResponse
 import os
+from django.core.exceptions import ObjectDoesNotExist
 
 ssl._create_default_https_context = ssl._create_unverified_context
 # key = "a435e1173a8238a1fb5fd6d07bc8042c901abbfd"
@@ -22,6 +23,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 
 # STORE USERS AS EMPTY 
 users = []
+
 
 # LOGIN
 def login(request):
@@ -278,6 +280,9 @@ def newproject(request, redmine):
 def confirmation (request, name, redmine):
     
     if request.method == 'POST':
+        users = redmine.user.get('current')
+        user = users.id
+        get = models.settings.objects.get(user=user)
         # STATUS, DEPT, USER, AND PRIORITY IS STORED IN LOCAL DB TO FASTEN THE DROPDOWN LOAD
         allstatus = models.status.objects.all()
         alldept = models.dept.objects.all()
@@ -292,7 +297,7 @@ def confirmation (request, name, redmine):
             ws = wb.active
             
             # START GANTT CHART ROW
-            start_row = 5
+            start_row = get.start_row
 
             # STORED COLUMN VALUES
             col2_idx  = {}
@@ -325,32 +330,32 @@ def confirmation (request, name, redmine):
             def find_col_with_filled_color(ws, row_index):
                 filled_cells = []
                 # 9 STATE THE COLUMN GANTT CHART STARTED
-                for col_index in range(9, ws.max_column + 1):
+                for col_index in range(get.gannt_start_column, ws.max_column + 1):
                     cell = ws.cell(row=row_index, column=col_index)
                     if isinstance(cell.fill.fgColor.theme, int) or (cell.fill.fgColor.rgb != 'FFFF0000' and  cell.fill.fgColor.rgb !='00000000'):
-                        findweek = ws.cell(4, col_index).value
+                        findweek = ws.cell(get.week_number_row, col_index).value
                         filled_cells.append(findweek)
 
                 return filled_cells if filled_cells else None
             
             # ITERATE COLUMN 2 AS A BASE
 
-            for row_idx, (cell_value) in enumerate(ws.iter_rows(min_row=start_row,min_col=2,max_col=2, values_only=True), start=start_row):
+            for row_idx, (cell_value) in enumerate(ws.iter_rows(min_row=start_row,min_col=get.start_column,max_col=get.start_column, values_only=True), start=start_row):
                 col2_values.append(cell_value)
                 col2_idx[cell_value] = row_idx
             
             # ITERATE ROW FOR EVERY COLUMN TO GET THE VALUES
                 
-            for row in ws.iter_rows(min_row=start_row, min_col=3, max_col=3, values_only=True):
+            for row in ws.iter_rows(min_row=start_row, min_col=get.start_column+1, max_col=get.start_column+1, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
                 col3_values.append(cell_value)
-            for row in ws.iter_rows(min_row=start_row, min_col=4, max_col=4, values_only=True):
+            for row in ws.iter_rows(min_row=start_row, min_col=get.start_column+2, max_col=get.start_column+2, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
                 col4_values.append(cell_value)
-            for row in ws.iter_rows(min_row=start_row, min_col=5, max_col=5, values_only=True):
+            for row in ws.iter_rows(min_row=start_row, min_col=get.start_column+3, max_col=get.start_column+3, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
                 col5_values.append(cell_value)
-            for row in ws.iter_rows(min_row=start_row, min_col=6, max_col=6, values_only=True):
+            for row in ws.iter_rows(min_row=start_row, min_col=get.end_column, max_col=get.end_column, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
                 col6_values.append(cell_value)
             
@@ -386,10 +391,10 @@ def confirmation (request, name, redmine):
                         start_date = week_start
                         end_date = week_end
 
-                    findpic = ws.cell(col2_idx[value], 8).value
+                    findpic = ws.cell(col2_idx[value], get.pic_column).value
                     if findpic is not None:
                         findpic = findpic.upper()
-                    findperson = ws.cell(col2_idx[value], 61).value
+                    findperson = ws.cell(col2_idx[value], get.email_column).value
                     if findperson is not None:
                         if ',' in findperson:
                             findperson.split(',')
@@ -424,10 +429,10 @@ def confirmation (request, name, redmine):
                             start_date = start_date.strftime('%Y-%m-%d')
                             end_date = end_date.strftime('%Y-%m-%d')
                      
-                        findpic = ws.cell(idx+start_row, 8).value
+                        findpic = ws.cell(idx+start_row, get.pic_column).value
                         if findpic is not None:
                             findpic = findpic.upper()
-                        findperson = ws.cell(idx+start_row, 61).value
+                        findperson = ws.cell(idx+start_row, get.email_column).value
                         if findperson is not None:
                             if ',' in findperson:
                                 findperson.split(',')
@@ -457,10 +462,10 @@ def confirmation (request, name, redmine):
                                 start_date = start_date.strftime('%Y-%m-%d')
                                 end_date = end_date.strftime('%Y-%m-%d')
                         
-                            findpic = ws.cell(idx+start_row, 8).value
+                            findpic = ws.cell(idx+start_row, get.pic_column).value
                             if findpic is not None:
                                 findpic = findpic.upper()
-                            findperson = ws.cell(idx+start_row, 61).value
+                            findperson = ws.cell(idx+start_row, get.email_column).value
                             if findperson is not None:
                                 if ',' in findperson:
                                     findperson.split(',')
@@ -490,10 +495,10 @@ def confirmation (request, name, redmine):
                                     start_date = start_date.strftime('%Y-%m-%d')
                                     end_date = end_date.strftime('%Y-%m-%d')
                             
-                                findpic = ws.cell(idx+start_row, 8).value
+                                findpic = ws.cell(idx+start_row, get.pic_column).value
                                 if findpic is not None:
                                     findpic = findpic.upper()
-                                findperson = ws.cell(idx+start_row, 61).value
+                                findperson = ws.cell(idx+start_row, get.email_column).value
                                 if findperson is not None:
                                     if ',' in findperson:
                                         findperson.split(',')
@@ -526,10 +531,10 @@ def confirmation (request, name, redmine):
                                         start_date = start_date.strftime('%Y-%m-%d')
                                         end_date = end_date.strftime('%Y-%m-%d')
                                 
-                                    findpic = ws.cell(idx+start_row, 8).value
+                                    findpic = ws.cell(idx+start_row, get.pic_column).value
                                     if findpic is not None:
                                         findpic = findpic.upper()
-                                    findperson = ws.cell(idx+start_row, 61).value
+                                    findperson = ws.cell(idx+start_row, get.email_column).value
                                     if findperson is not None:
                                         if ',' in findperson:
                                             findperson.split(',')   
@@ -1309,3 +1314,54 @@ def testing(request, redmine):
         return render(request, "testing.html",{
 
     })
+
+@check_login_session
+@initialize_redmine
+def settings(request,redmine):
+    users = redmine.user.get('current')
+    user = users.id
+    if request.method == "GET":
+        try:
+            getuser = models.user.objects.get(id=user)
+            get = models.settings.objects.get(user=getuser)
+            
+            dict = {
+                'start_row' : get.start_row,
+                'gannt_start_column' : get.gannt_start_column,
+                'week_number_row' : get.week_number_row,
+                'start_column' : get.start_column,
+                'end_column' : get.end_column,
+                'pic_column' : get.pic_column,
+                'email_column' : get.email_column
+            }
+        except ObjectDoesNotExist:
+            getuser = models.user.objects.get(id=user)
+            create = models.settings.objects.create(user=getuser)
+            get = create
+            dict={
+                'start_row' : get.start_row,
+                'gannt_start_column' : get.gannt_start_column,
+                'week_number_row' : get.week_number_row,
+                'start_column' : get.start_column,
+                'end_column' : get.end_column,
+                'pic_column' : get.pic_column,
+                'email_column' : get.email_column
+            }
+        return render(request, 'settings.html',{
+    'dict' : dict
+
+    })
+    else:
+
+        get = models.settings.objects.get(user=user)
+        get.gannt_start_column = request.POST['gannt_start_column']
+        get.week_number_row = request.POST['week_number_row']
+        get.start_row = request.POST['start_row']
+        get.start_column = request.POST['start_column']
+        get.end_column = request.POST['end_column']
+        get.pic_column = request.POST['pic_column']
+        get.email_column = request.POST['email_column']
+        get.save()
+        return redirect('settings')
+    
+    
