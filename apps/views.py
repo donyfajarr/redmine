@@ -48,47 +48,17 @@ def login(request):
             request.session['username'] = username
             request.session['password'] = password
             
-            try:
-                connection = mysql.connector.connect(
-                    host='10.58.1.2',
-                    port='3307',
-                    database='bitnami_redmine',
-                    user='report',
-                    password='mokondo12'
-                )
-                if connection.is_connected():
-                    print('Connected to MySQL database')
-                cursor = connection.cursor()
-                query = "SELECT users.id, users.firstname, users.lastname, address FROM users JOIN email_addresses ON users.id = email_addresses.user_id"
-                cursor.execute(query)
-                rows = cursor.fetchall()
-                models.user.objects.all().delete()
-                for row in rows:
-                    id, firstname, lastname, email = row
-                    try:
-                        models.user.objects.create(id=id,name=firstname+ ' ' +lastname, email=email)
-                    except:
-                        print('not exists')
-            except mysql.connector.Error as e:
-                print(f'Error connecting to MySQL database: {e}')
-
-            finally:
-                # Close cursor and connection
-                if 'cursor' in locals():
-                    cursor.close()
-                if 'connection' in locals() and connection.is_connected():
-                    connection.close()
-                    print('Connection to MySQL database closed')
-            
             users = redmine.user.get('current')
             user = users.id
             try:
                 getuser = models.user.objects.get(id=user)
                 models.settings.objects.get(user=getuser)
+                print(getuser)
+                # print('kesini')
             except ObjectDoesNotExist:
                 getuser = models.user.objects.get(id=user)
                 models.settings.objects.create(user=getuser)
-                
+                print('nothere')
 
             return redirect('index')
         
@@ -1079,7 +1049,7 @@ def addrelations(request,id, redmine):
         target.save()
         return redirect ('listissue', id=id)
 
-
+@check_login_session
 def register(request):
     try:
         connection = mysql.connector.connect(
@@ -1113,12 +1083,13 @@ def register(request):
             connection.close()
             print('Connection to MySQL database closed')
 
+    return redirect('index')
+
 
 
 # THIS FUNCTION IS USED TO GET AN AVAILABLE EMAIL TO BEING AUTO SCHEDULE IT EVERY MORNING
 @check_login_session
-@initialize_redmine
-def testing(request, redmine):
+def email(request):
     if request.method == "GET":
         try:
             connection = mysql.connector.connect(
@@ -1325,13 +1296,13 @@ def testing(request, redmine):
 
                             print(payload)
                             print('akhir')
-                            # response = requests.post(email_api, json = payload)
+                            response = requests.post(email_api, json = payload)
 
-                            # if response.status_code == 200:
-                            #     print("Email sent successfully.")
-                            # else:
-                            #     print(f"Failed to send email. Status code: {response.status_code}")
-                            #     print(response.text)  # Print the response content for debugging
+                            if response.status_code == 200:
+                                print("Email sent successfully.")
+                            else:
+                                print(f"Failed to send email. Status code: {response.status_code}")
+                                print(response.text)  # Print the response content for debugging
                      
                     else:
                         print('gaada')
@@ -1353,9 +1324,7 @@ def testing(request, redmine):
         email(between_tasks)
         email(dueselected_tasks)
         
-        return render(request, "testing.html",{
-
-    })
+        return redirect('index')
 
 @check_login_session
 @initialize_redmine

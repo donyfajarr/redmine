@@ -15,8 +15,9 @@ urlpatterns = [
     path('newproject', views.newproject, name='newproject'),
     path('confirmation/<str:name>', views.confirmation, name='confirmation'),
     path('addrelation/<str:id>', views.addrelations, name='addrelation'),
-    path('testing', views.testing, name='testing'),
+    path('register', views.register, name='register'),
     path('', views.login, name='login'),
     path('logout', views.logout, name='logout'),
-    path('settings', views.settings, name='settings')
+    path('settings', views.settings, name='settings'),
+    path('email', views.email, name='email')
 ]
