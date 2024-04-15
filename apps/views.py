@@ -50,6 +50,8 @@ def login(request):
             
             users = redmine.user.get('current')
             user = users.id
+
+            # COMES FROM DEF REGISTER, USED TO DELETE AND RETRIEVE DB TO GET AN UPDATED DATA
             try:
                 connection = mysql.connector.connect(
                     host='10.58.1.2',
@@ -81,6 +83,8 @@ def login(request):
                 if 'connection' in locals() and connection.is_connected():
                     connection.close()
                     print('Connection to MySQL database closed')
+
+            # FIND A SETTINGS THAT USER HAS, IF NOT THEN CREATE USING A DEFAULT TEMPLATE
             try:
                 models.settings.objects.get(user=user)
             except ObjectDoesNotExist:
@@ -95,7 +99,7 @@ def login(request):
 
 # LOGOUT
 def logout(request):
-    # DELETE SESSION TO LOGOUT
+    # DELETE LOGIN SESSION TO LOGOUT
     del request.session['username']
     del request.session['password']
     return redirect ('login')
@@ -1066,14 +1070,16 @@ def addrelations(request,id, redmine):
             'get':get
         })
     else:
-
         target = redmine.issue_relation.new()
         target.issue_id = request.POST['issue_id']
         target.issue_to_id = request.POST['issue_to_id']
         target.relation_type = request.POST['relation_type']
+        if request.POST['relation_type'] == "precedes" or "follows":
+            target.delay = request.POST['delay']
         target.save()
         return redirect ('listissue', id=id)
 
+# CREATED AS A MANUAL DATA UPDATE, ACCESS IT THROUGH /REGISTER
 @check_login_session
 def register(request):
     try:
@@ -1113,6 +1119,7 @@ def register(request):
 
 
 # THIS FUNCTION IS USED TO GET AN AVAILABLE EMAIL TO BEING AUTO SCHEDULE IT EVERY MORNING
+# ITS FOR MANUAL TEST, ACCESSS IT THROUGH /send_email
 @check_login_session
 def send_email(request):
     if request.method == "GET":
