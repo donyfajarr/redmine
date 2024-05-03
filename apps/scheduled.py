@@ -19,9 +19,10 @@ def scheduled():
 
         # Define the SQL query
         query = [
-            "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE start_date = %s AND projects.status !=5",
-            "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE start_date <= %s AND %s <= due_date AND projects.status !=5",
-            "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE due_date = %s AND projects.status !=5",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE start_date = %s AND projects.status !=5 AND issues.status_id !=5",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE start_date <= %s AND %s <= due_date AND projects.status !=5 AND issues.status_id !=5",
+                "SELECT issues.id, issues.subject, issues.project_id, projects.name, issues.start_date, issues.due_date, issues.author_id FROM issues JOIN projects ON issues.project_id = projects.id WHERE due_date = %s AND projects.status !=5 AND issues.status_id !=5",
+
 
         ]
         today_date = date.today()
