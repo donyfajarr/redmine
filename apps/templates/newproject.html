@@ -235,16 +235,16 @@
                 </div>
                 <script>
                   function validateForm() {
-                      var inputString = document.getElementsByName("name")[0].value;
-                      // Regular expression to match only alphabets and numbers
-                      var regex = /^[a-zA-Z0-9]+$/;
-                      // Check if input string contains invalid characters
-                      if (!regex.test(inputString)) {
-                          alert("Nama project hanya dapat menggunakan alfabet, spasi, dan angka.");
-                          return false; // Prevent form submission
-                      }
-                      return true; // Allow form submission
+                  var inputString = document.getElementsByName("name")[0].value;
+                  // Regular expression to match alphabets, numbers, and spaces
+                  var regex = /^[a-zA-Z0-9\s]+$/;
+                  // Check if input string contains invalid characters
+                  if (!regex.test(inputString)) {
+                      alert("Nama project hanya dapat menggunakan alfabet, spasi, dan angka.");
+                      return false; // Prevent form submission
                   }
+                  return true; // Allow form submission
+              }
                   </script>
                    
             <!-- / Content -->

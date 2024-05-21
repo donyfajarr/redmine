@@ -300,10 +300,12 @@ def newproject(request, redmine):
         # HANDLER REMOVE SPACE IN NAME FOR PROJECT IDENTIFIER
         if " " in request.POST['name']:
             name = request.POST['name'].replace(" ", "")
+            name = name.lower()
             new.identifier = name
         else:
-            new.identifier = request.POST['name']
-
+            print(request.POST['name'])
+            new.identifier = request.POST['name'].lower()
+        
         new.description = request.POST['description']
         new.is_public = eval(request.POST['is_public'])
 
