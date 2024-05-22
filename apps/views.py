@@ -343,13 +343,6 @@ def confirmation (request, name, redmine):
             start_row = get.start_row
 
             # STORED COLUMN VALUES
-            col2_idx  = {}
-            col2_values = []
-            col3_values = []
-            col4_values = []
-            col5_values = []
-            col6_values = []
-            taskx = []
 
             def get_date_range_for_week(year, week_start, week_end):
                 if week_start is None or week_start < 1:
@@ -381,49 +374,46 @@ def confirmation (request, name, redmine):
 
                 return filled_cells if filled_cells else None
             
+            all = {}
+            all['col_start'] = []
+            for i in range(1, get.end_column - get.start_column):
+                all[f'col{i}_values'] = []
+            all['col_end'] = []
+
             # ITERATE COLUMN 2 AS A BASE
 
-            for row_idx, (cell_value) in enumerate(ws.iter_rows(min_row=start_row,min_col=get.start_column,max_col=get.start_column, values_only=True), start=start_row):
-                col2_values.append(cell_value)
-                col2_idx[cell_value] = row_idx
-            
+            for row in ws.iter_rows(min_row=start_row,min_col=get.start_column,max_col=get.start_column, values_only=True):
+                cell_value = row[0] if row and row[0] is not None else None
+                all['col_start'].append(cell_value)  
             # ITERATE ROW FOR EVERY COLUMN TO GET THE VALUES
-                
-            for row in ws.iter_rows(min_row=start_row, min_col=get.start_column+1, max_col=get.start_column+1, values_only=True):
-                cell_value = row[0] if row and row[0] is not None else None
-                col3_values.append(cell_value)
-            for row in ws.iter_rows(min_row=start_row, min_col=get.start_column+2, max_col=get.start_column+2, values_only=True):
-                cell_value = row[0] if row and row[0] is not None else None
-                col4_values.append(cell_value)
-            for row in ws.iter_rows(min_row=start_row, min_col=get.start_column+3, max_col=get.start_column+3, values_only=True):
-                cell_value = row[0] if row and row[0] is not None else None
-                col5_values.append(cell_value)
+            for i in range(1, get.end_column - get.start_column):
+                for row in ws.iter_rows(min_row=start_row, min_col=get.start_column+i, max_col=get.start_column+i, values_only=True):
+                    cell_value = row[0] if row and row[0] is not None else None
+                    all[f'col{i}_values'].append(cell_value)
             for row in ws.iter_rows(min_row=start_row, min_col=get.end_column, max_col=get.end_column, values_only=True):
                 cell_value = row[0] if row and row[0] is not None else None
-                col6_values.append(cell_value)
+                all['col_end'].append(cell_value)        
             
             
             tasks_data = []
             current_task = None
-            temp = []
-            temp2 = []
-            temp3 = []
-            temp4 = []
+           
+        # Dictionary to keep track of the current parent task at each column level
+            current_tasks = {key: None for key in all.keys()}
 
-            # ITERATE BASE ON COLUMN 2 AND CONTINUE INTO COLUMN 3, 4, etc AND SAVE IT ON CURRENT_TASK
-            for idx, value in enumerate(col2_values):
-                if value[0] is not None:
-    
-                    taskx.append(col2_idx[value])
-                    p = find_col_with_filled_color(ws,col2_idx[value])
+            for idx, value in enumerate(all['col_start']):
+                if value is not None:
+                    # Main Task
+                    print('masuk')
+                    p = find_col_with_filled_color(ws, idx + start_row)
                     if p is not None:
-                        if len(p)>1:
+                        if len(p) > 1:
                             week_start = min(p)
                             week_end = max(p)
                         else:
                             week_start = min(p)
                             week_end = None
-                        
+
                         get_ranges = get_date_range_for_week(2024, week_start, week_end)
                         for start_date, end_date in get_ranges:
                             start_date = start_date.strftime('%Y-%m-%d')
@@ -434,161 +424,95 @@ def confirmation (request, name, redmine):
                         start_date = week_start
                         end_date = week_end
 
-                    findpic = ws.cell(col2_idx[value], get.pic_column).value
+                    findpic = ws.cell(idx + start_row, get.pic_column).value
                     if findpic is not None:
                         findpic = findpic.upper()
-                    findperson = ws.cell(col2_idx[value], get.email_column).value
+                    findperson = ws.cell(idx + start_row, get.email_column).value
                     if findperson is not None:
                         if ',' in findperson:
-                            findperson.split(',')
+                            findperson = findperson.split(',')
                         findperson = findperson
-                    current_task = {'name': value[0], 'start_date':start_date, 'due_date':end_date, 'pic' : findpic, 'person': findperson, 'subtasks': {}, }
+
+                    current_task = {
+                        'name': value,
+                        'start_date': start_date,
+                        'due_date': end_date,
+                        'pic': findpic,
+                        'person': findperson,
+                        'subtasks': []
+                    }
                     tasks_data.append(current_task)
-                    temp = []
-                    
-                    # TEMP IS USED TO STORE A ISSUE THAT HAS A SUBTASKS AND NEED TO ITERATE INTO THE NEXT COLUMN
-                    # LATER THE TEMP IS BEING CLEANED IF THERE ARE NO LONGER ITERATION FOR THOSE COLUMN
 
-                elif current_task is not None:
-                    subtask_value = col3_values[idx] if idx < len(col3_values) else None
-                    
-                    if subtask_value is not None:
-                        
-                        p = find_col_with_filled_color(ws,idx+start_row)
-                    
-                        if p is not None:
-                            if len(p)>1:
-                                week_start = min(p)
-                                week_end = max(p)
-                            else:
-                                week_start = min(p)
-                                week_end = None
-                        else:
-                            week_start = None
-                            week_end = None
-                        get_ranges =  get_date_range_for_week(2024, week_start, week_end)
+                    # Set the current task for col_start level
+                    current_tasks['col_start'] = current_task
 
-                        for start_date, end_date in get_ranges:
-                            start_date = start_date.strftime('%Y-%m-%d')
-                            end_date = end_date.strftime('%Y-%m-%d')
-                     
-                        findpic = ws.cell(idx+start_row, get.pic_column).value
-                        if findpic is not None:
-                            findpic = findpic.upper()
-                        findperson = ws.cell(idx+start_row, get.email_column).value
-                        if findperson is not None:
-                            if ',' in findperson:
-                                findperson.split(',')
-                            findperson = findperson
-                        add = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson, 'subtasks' : {} }
-                        temp.append(add)
-                        current_task['subtasks'] = temp
+                    # Reset the current task for all subsequent columns
+                    for key in list(current_tasks.keys())[1:]:
+                        current_tasks[key] = None
 
-                    else:
-                        subtask_value = col4_values[idx] if idx < len(col4_values) else None
+                else:
+                    # Iterate through remaining columns to find subtasks
+                    for key in list(all.keys())[1:]:
+                        col_values = all[key]
+                        subtask_value = col_values[idx]
                         if subtask_value is not None:
-                            p = find_col_with_filled_color(ws,idx+start_row)
-                        
+                            print(key)
+                            print(subtask_value)
+                            p = find_col_with_filled_color(ws, idx + start_row)
                             if p is not None:
-                                if len(p)>1:
+                                if len(p) > 1:
                                     week_start = min(p)
                                     week_end = max(p)
                                 else:
                                     week_start = min(p)
                                     week_end = None
-                            else:
-                                week_start = None
-                                week_end = None
-                            get_ranges =  get_date_range_for_week(2024, week_start, week_end)
 
-                            for start_date, end_date in get_ranges:
-                                start_date = start_date.strftime('%Y-%m-%d')
-                                end_date = end_date.strftime('%Y-%m-%d')
-                        
-                            findpic = ws.cell(idx+start_row, get.pic_column).value
-                            if findpic is not None:
-                                findpic = findpic.upper()
-                            findperson = ws.cell(idx+start_row, get.email_column).value
-                            if findperson is not None:
-                                if ',' in findperson:
-                                    findperson.split(',')
-                                findperson = findperson
-                            add2 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson, 'subtasks' : {}}
-                            temp2.append(add2)
-                            add['subtasks'] = temp2
-                            
-                        else:
-                            temp2 = []  
-                            subtask_value = col5_values[idx] if idx < len(col5_values) else None
-                            if subtask_value is not None:
-                                p = find_col_with_filled_color(ws,idx+start_row)
-                                if p is not None:
-                                    if len(p)>1:
-                                        week_start = min(p)
-                                        week_end = max(p)
-                                    else:
-                                        week_start = min(p)
-                                        week_end = None
-                                else:
-                                    week_start = None
-                                    week_end = None
-                                get_ranges =  get_date_range_for_week(2024, week_start, week_end)
-
+                                get_ranges = get_date_range_for_week(2024, week_start, week_end)
                                 for start_date, end_date in get_ranges:
                                     start_date = start_date.strftime('%Y-%m-%d')
                                     end_date = end_date.strftime('%Y-%m-%d')
-                            
-                                findpic = ws.cell(idx+start_row, get.pic_column).value
-                                if findpic is not None:
-                                    findpic = findpic.upper()
-                                findperson = ws.cell(idx+start_row, get.email_column).value
-                                if findperson is not None:
-                                    if ',' in findperson:
-                                        findperson.split(',')
-                                findperson = findperson
-                                add3 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date, 'due_date' : end_date, 'person':findperson,'subtasks' : {} }
-                                temp3.append(add3)
-                                add2['subtasks'] = temp3
-                                
                             else:
-                                
-                                temp3 = []
-                                subtask_value = col6_values[idx] if idx < len(col6_values) else None
-                          
-                                if subtask_value is not None:
-                                    p = find_col_with_filled_color(ws,idx+start_row)
-                                  
-                                    if p is not None:
-                                        if len(p)>1:
-                                            week_start = min(p)
-                                            week_end = max(p)
-                                        else:
-                                            week_start = min(p)
-                                            week_end = None
-                                    else:
-                                        week_start = None
-                                        week_end = None
-                                    get_ranges =  get_date_range_for_week(2024, week_start, week_end)
+                                week_start = None
+                                week_end = None
+                                start_date = week_start
+                                end_date = week_end
 
-                                    for start_date, end_date in get_ranges:
-                                        start_date = start_date.strftime('%Y-%m-%d')
-                                        end_date = end_date.strftime('%Y-%m-%d')
-                                
-                                    findpic = ws.cell(idx+start_row, get.pic_column).value
-                                    if findpic is not None:
-                                        findpic = findpic.upper()
-                                    findperson = ws.cell(idx+start_row, get.email_column).value
-                                    if findperson is not None:
-                                        if ',' in findperson:
-                                            findperson.split(',')   
-                                    add4 = {'name' : subtask_value, 'pic': findpic, 'start_date' : start_date,'person':findperson, 'due_date' : end_date }
-                                    temp4.append(add4)
-                                    add3['subtasks'] = temp4
-                                else:
-                                    temp4 = []
-                else:
-                    pass
+                            findpic = ws.cell(idx + start_row, get.pic_column).value
+                            if findpic is not None:
+                                findpic = findpic.upper()
+                            findperson = ws.cell(idx + start_row, get.email_column).value
+                            if findperson is not None:
+                                if ',' in findperson:
+                                    findperson = findperson.split(',')
+                                findperson = findperson
+
+                            subtask = {
+                                'name': subtask_value,
+                                'pic': findpic,
+                                'start_date': start_date,
+                                'due_date': end_date,
+                                'person': findperson,
+                                'subtasks': []
+                            }
+
+                            # Find the appropriate parent task for the current subtask
+                            for parent_key in reversed(list(current_tasks.keys())[:list(current_tasks.keys()).index(key)]):
+                                if current_tasks[parent_key] is not None:
+                                    if 'subtasks' not in current_tasks[parent_key]:
+                                        current_tasks[parent_key]['subtasks'] = []
+                                    current_tasks[parent_key]['subtasks'].append(subtask)
+                                    break
+
+                            # Set the current task for the current column
+                            current_tasks[key] = subtask
+
+                            # Reset the current task for all subsequent columns
+                            for subsequent_key in list(current_tasks.keys())[list(current_tasks.keys()).index(key) + 1:]:
+                                current_tasks[subsequent_key] = None
+
             
+
+            print(tasks_data)
             # IT IS USED TO ATTACH A PARENT NAME KEYS FOR A SUBTASKS BASED ON A SUBTASKS THAT CONTAINED IN PARENT
             def process_tasks(tasks, parent_name=None):
                 for task in tasks:
@@ -596,10 +520,14 @@ def confirmation (request, name, redmine):
                     forprint.append(task)
                     if 'subtasks' in task and task['subtasks']:
                         process_tasks(task['subtasks'], parent_name=task['name'])
-
+                    if 'subtasks' in task:
+                        del task['subtasks']
+            
             process_tasks(tasks_data)
+            print(forprint)
             user = redmine.user.get('current')
 
+            # print(forprint)
             # SESSION THE DATA TO BE PASSED INTO AFTER POST LOGIC
 
             request.session['forprint'] = forprint
@@ -652,10 +580,41 @@ def confirmation (request, name, redmine):
                 create = redmine.issue.new()
 
                 # IF THERE IS A PARENT ON TASK
+                def get_latest(redmine, project_id):
+                    latest = redmine.issue.filter(project_id = project_id, sort='created_on:desc', limit=1)
+                    if latest:
+                        return latest[0].id
+                    return None
+                def get_latest_issue_id(redmine, project_id):
+                    # Retrieve the latest issue created in the project
+                    latest_issue = redmine.issue.filter(project_id=project_id, sort='created_on:desc', limit=1)
+                    if latest_issue:
+                        return latest_issue[0].id
+                    return None
+
                 if parent is not None:
-                    parent_issue_id = redmine.issue.filter(project_id = id, subject=parent)
-                    for i in parent_issue_id:
-                        create.parent_issue_id = i.id
+                    # Get the latest issue ID in the project
+                    latest_issue_id = get_latest_issue_id(redmine, id)
+                    
+                    if latest_issue_id is not None:
+                        parent_issue_ids = redmine.issue.filter(project_id=id, subject=parent)
+                        
+                        if parent_issue_ids:
+                            # Find the issue with the ID closest to the latest issue ID
+                            closest_issue = min(parent_issue_ids, key=lambda issue: abs(issue.id - latest_issue_id))
+                            
+                            # Set the parent issue ID to the closest ID found
+                            create.parent_issue_id = closest_issue.id
+
+                    
+                    # parent_issue_id = redmine.issue.filter(project_id = id, subject=parent)
+                    # print('nama', subject)
+                    # for i in parent_issue_id:
+                    #     print('opsi', i, i.id)
+                    # if parent_issue_id:
+                    #     largest = max(issue.id for issue in parent_issue_id)
+                    #     create.parent_issue_id = largest
+                    #     print('pilih',largest)
                 else:
                     pass
                 create.project_id = id
@@ -686,13 +645,16 @@ def confirmation (request, name, redmine):
                 responsible2.append(responsible_users)
                 if item.get('Parent') is None:
                     first_condition_items.append(item)
-                elif item.get('subtasks') is not None and item.get('Parent') is not None:
-                    second_condition_items.append(item)
-                elif item.get('subtasks') is None and item.get('Parent') is not None:
-                    last_condition_items.append(item)
+                # elif item.get('subtasks') is not None and item.get('Parent') is not None:
                 else:
-                    print('stillexists')
-
+                    second_condition_items.append(item)
+                # elif item.get('subtasks') is None and item.get('Parent') is not None:
+                #     last_condition_items.append(item)
+                # else:
+                #     print('stillexists')
+            print('first',first_condition_items)
+            print('second',second_condition_items)
+            print('last',last_condition_items)
             flat = [item for sublist in responsible2 for item in sublist]
             all_responsible_users = list(set(flat))
 
